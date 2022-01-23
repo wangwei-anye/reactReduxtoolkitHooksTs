@@ -4,13 +4,13 @@ const MiniCssExtractPlugin = require('mini-css-extract-plugin');
 
 const config = {
   entry: {
-    index: './src/index.js',
+    index: './src/index.js'
   },
   output: {
     path: path.resolve(__dirname, '../dist'),
     publicPath: '/',
     filename: 'index-[hash:8].js',
-    chunkFilename: 'js/[name].chunk-[chunkhash:8].js',
+    chunkFilename: 'js/[name].chunk-[chunkhash:8].js'
   },
   module: {
     rules: [
@@ -21,33 +21,28 @@ const config = {
             loader: 'ts-loader',
             options: {
               // 指定特定的ts编译配置，为了区分脚本的ts配置
-              configFile: path.resolve(__dirname, '../tsconfig.json'),
-            },
-          },
+              configFile: path.resolve(__dirname, '../tsconfig.json')
+            }
+          }
         ],
-        exclude: /node_modules/,
+        exclude: /node_modules/
       },
       {
         test: /(?:\.js|\.jsx|\.es6)$/,
         exclude: /node_modules/,
         use: {
-          loader: 'babel-loader',
-        },
+          loader: 'babel-loader'
+        }
       },
       {
         test: /\.css$/,
-        use: [MiniCssExtractPlugin.loader, 'css-loader', 'postcss-loader'],
+        use: [MiniCssExtractPlugin.loader, 'css-loader', 'postcss-loader']
       },
       {
         test: /\.less$/,
         exclude: /node_modules/,
         include: [path.join(process.cwd(), './src')],
-        use: [
-          MiniCssExtractPlugin.loader,
-          'css-loader',
-          'postcss-loader',
-          'less-loader',
-        ],
+        use: [MiniCssExtractPlugin.loader, 'css-loader', 'postcss-loader', 'less-loader']
       },
       //编译加载图片及字体
       {
@@ -58,12 +53,12 @@ const config = {
             loader: 'url-loader',
             options: {
               limit: 5000,
-              outputPath: 'images',
-            },
-          },
-        ],
-      },
-    ],
+              outputPath: 'images'
+            }
+          }
+        ]
+      }
+    ]
   },
   optimization: {
     splitChunks: {
@@ -78,33 +73,33 @@ const config = {
         defaultVendors: {
           test: /[\\/]node_modules[\\/]/,
           priority: -10,
-          reuseExistingChunk: true,
+          reuseExistingChunk: true
         },
         default: {
           minChunks: 2,
           priority: -20,
-          reuseExistingChunk: true,
-        },
-      },
-    },
+          reuseExistingChunk: true
+        }
+      }
+    }
   },
   resolve: {
     //别名
     alias: {
       componets: './src/components/',
-      '@': path.resolve(__dirname, '../src'),
+      '@': path.resolve(__dirname, '../src')
     },
     //引入文件没有后缀时，默认后缀
-    extensions: ['.js', '.jsx', '.es6', '.less', '.css', '.ts', '.tsx'],
+    extensions: ['.js', '.jsx', '.ts', '.tsx']
   },
   plugins: [
     new HtmlWebpackPlugin({
-      template: 'index.html',
+      template: 'index.html'
     }),
     new MiniCssExtractPlugin({
       filename: 'css/[name]-[contenthash:8].css',
-      chunkFilename: 'css/[id]-[contenthash:8].css',
-    }),
-  ],
+      chunkFilename: 'css/[id]-[contenthash:8].css'
+    })
+  ]
 };
 module.exports = config;

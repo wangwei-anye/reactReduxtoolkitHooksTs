@@ -11,7 +11,7 @@ import Loading from './components/Loading';
 const LoadableDDD = Loadable({
   loader: () => import('./routes/AAA/DDD'),
   loading: Loading,
-  delay: 300,
+  delay: 300
 });
 
 function routerConfig() {
