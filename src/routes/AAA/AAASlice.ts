@@ -1,13 +1,21 @@
-import { createSlice, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { AppThunk, RootState } from '../../models/store';
+import { getDataApi } from '@/services/login';
 
 interface CounterState {
   value: number;
+  list: Array<object>;
 }
 
 const initialState: CounterState = {
-  value: 999
+  value: 999,
+  list: []
 };
+
+export const getData = createAsyncThunk('counter/getData', async () => {
+  const { data } = await getDataApi();
+  return data.data;
+});
 
 export const counterSlice = createSlice({
   name: 'counter',
@@ -21,6 +29,21 @@ export const counterSlice = createSlice({
     },
     incrementByAmount: (state, action: PayloadAction<number>) => {
       state.value += action.payload;
+    }
+  },
+  extraReducers: {
+    [getData.fulfilled.type](state, { payload }) {
+      payload.list.map((item: any, index: number) => {
+        item.key = index;
+        return item;
+      });
+      state.list = payload.list;
+    },
+    [getData.rejected.type](state, err) {
+      console.log(err);
+    },
+    [getData.pending.type](state) {
+      console.log('进行中');
     }
   }
 });

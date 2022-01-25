@@ -5,6 +5,7 @@ import './index.less';
 import '../mock/score';
 import { store } from './models/store';
 import { Provider } from 'react-redux';
+import 'antd/dist/antd.css';
 
 ReactDom.render(
   <React.StrictMode>

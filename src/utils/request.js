@@ -1,50 +1,69 @@
-import Qs from 'qs';
-import axios from 'axios';
+import { message } from 'antd';
 
-axios.defaults.timeout = 20000;
+const expireValveDuration = 10e3; // 接口过期处理后多少秒内保持静默，默认10秒
+let expireValveOn = false; // 接口过期处理开关
 
-// 自动发送cookie中的认证信息
-axios.defaults.withCredentials = true;
+function parseJSON(response) {
+  return response.json();
+}
 
-axios.defaults.transformRequest = [
-  function (data) {
-    data = Qs.stringify(data);
-    return data;
+function checkStatus(response) {
+  if (response.status >= 200 && response.status < 300) {
+    return response;
   }
-];
 
-axios.defaults.transformResponse = [
-  function (data) {
-    data = JSON.parse(data);
-    return data;
+  const error = new Error(response.statusText);
+  error.response = response;
+  throw error;
+}
+
+/**
+ * Requests a URL, returning a promise.
+ *
+ * @param  {string} url       The URL we want to request
+ * @param  {object} [options] The options we want to pass to "fetch"
+ * @return {object}           An object containing either "data" or "err"
+ */
+export default function request(url, options) {
+  // 配置默认headers
+  const headers = options && options.headers;
+
+  if (options && options.method && options.method.toUpperCase() === 'POST') {
+    headers = Object.assign(
+      {
+        'Content-Type': 'application/json;charset=UTF-8'
+      },
+      options && options.headers
+    );
   }
-];
 
-axios.interceptors.request.use(
-  function (config) {
-    //console.log("请求开始: ", config.url)
-    return config;
-  },
-  function (error) {
-    return Promise.reject(error);
+  if (options && options.body && options.body instanceof FormData) {
+    delete headers['Content-Type'];
   }
-);
 
-axios.interceptors.response.use(
-  (res) => {
-    // 对于任何接口请求行为, API 服务会确认认证信息
-    // 当认证信息不存在时, API 服务会返回未认证消息,
-    // 对于这种情况, 在此处做统一的拦截处理, 重定向到登录页
-    if (res.data.code === '0006') {
-      // alert('登录失效, 请重新登录!');
-    }
-
-    return res;
-  },
-  (error) => {
-    console.log('请求错误');
-    return Promise.reject(error);
+  // 配置默认设置
+  const settings = Object.assign(
+    {
+      method: 'GET',
+      mode: 'cors'
+    },
+    options,
+    { headers }
+  );
+  // 修复url中多余的斜杠
+  const fixUrl = url.replace(/\/\//g, '/').replace(/:\/([^/])/, '://$1');
+  // 非GET方式不允许缓存
+  if (settings.method.toUpperCase() !== 'GET') {
+    settings['Cache-Control'] = 'no-cache';
   }
-);
-
-export default axios;
+  return fetch(fixUrl, settings)
+    .then(checkStatus)
+    .then(parseJSON)
+    .then((data) => {
+      return { data };
+    })
+    .catch((err) => {
+      message.error('服務異常');
+      return { err };
+    });
+}

@@ -13,8 +13,8 @@ const config = {
     contentBase: path.join(__dirname, 'dist'),
     compress: true,
     port: 8000,
-    hot: true,
+    hot: true
   },
-  devtool: 'cheap-module-source-map',
+  devtool: 'cheap-module-source-map'
 };
 module.exports = config;
