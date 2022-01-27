@@ -11,6 +11,7 @@ import {
 } from './AAASlice';
 import { store } from '@/models/store';
 import { json } from 'stream/consumers';
+import { promises } from 'stream';
 
 const columns = [
   {
@@ -48,7 +49,7 @@ const AAA: React.FC = (props) => {
           handleClick();
         }}
       >
-        count阿
+        count阿1111
       </Button>
       <Rate allowHalf defaultValue={2.5} />
       <Table dataSource={list} columns={columns} />;
