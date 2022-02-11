@@ -1,9 +1,11 @@
 const path = require('path');
+const webpack = require('webpack');
 const baseConfig = require('./webpack.base.config');
+const getEnvDefine = require('./envDefine');
 const optimization = require('./webpack.optimization');
 
 const envName = 'development';
-process.env.NODE_ENV = 'development';
+const envDefine = getEnvDefine(envName);
 
 const config = {
   ...baseConfig,
@@ -12,9 +14,11 @@ const config = {
   devServer: {
     contentBase: path.join(__dirname, 'dist'),
     compress: true,
-    port: 8000,
+    port: 8088,
     hot: true
   },
-  devtool: 'cheap-module-source-map'
+  devtool: 'source-map'
 };
+config.plugins.push(new webpack.DefinePlugin(envDefine));
+
 module.exports = config;

@@ -2,23 +2,25 @@ import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { AppThunk, RootState } from '../../models/store';
 import { getDataApi } from '@/services/login';
 
-interface CounterState {
+interface taskState {
   value: number;
   list: Array<object>;
+  loading: boolean;
 }
 
-const initialState: CounterState = {
+const initialState: taskState = {
   value: 999,
-  list: []
+  list: [],
+  loading: false
 };
 
-export const getData = createAsyncThunk('counter/getData', async () => {
+export const getData = createAsyncThunk('task/getData', async () => {
   const { data } = await getDataApi();
   return data.data;
 });
 
-export const counterSlice = createSlice({
-  name: 'counter',
+export const taskSlice = createSlice({
+  name: 'task',
   initialState,
   reducers: {
     increment: (state) => {
@@ -38,17 +40,18 @@ export const counterSlice = createSlice({
         return item;
       });
       state.list = payload.list;
+      state.loading = false;
     },
     [getData.rejected.type](state, err) {
       console.log(err);
     },
     [getData.pending.type](state) {
-      console.log('进行中');
+      state.loading = true;
     }
   }
 });
 
-export const { increment, decrement, incrementByAmount } = counterSlice.actions;
+export const { increment, decrement, incrementByAmount } = taskSlice.actions;
 
 export const incrementAsync =
   (amount: number): AppThunk =>
@@ -58,6 +61,6 @@ export const incrementAsync =
     }, 1000);
   };
 
-export const selectCount = (state: RootState) => state.counter;
+export const selectTask = (state: RootState) => state.task;
 
-export default counterSlice.reducer;
+export default taskSlice.reducer;
