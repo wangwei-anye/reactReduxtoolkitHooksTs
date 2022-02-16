@@ -1,6 +1,7 @@
 const path = require('path');
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 const MiniCssExtractPlugin = require('mini-css-extract-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 const config = {
   entry: {
@@ -99,6 +100,12 @@ const config = {
     new MiniCssExtractPlugin({
       filename: 'css/[name]-[contenthash:8].css',
       chunkFilename: 'css/[id]-[contenthash:8].css'
+    }),
+    new CopyWebpackPlugin({
+      patterns: [
+        { from: 'public/libjsesmini.wasm', to: 'libjsesmini.wasm' },
+        { from: 'public/e6mini.xodr', to: 'e6mini.xodr' }
+      ]
     })
   ]
 };

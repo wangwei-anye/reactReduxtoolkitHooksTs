@@ -15,17 +15,17 @@ class CommonLayout extends React.PureComponent {
   render() {
     const { children } = this.props;
     const { collapsed } = this.state;
-    const url = window.location.hash;
+    const url = window.location.pathname;
     return (
       <Layout className='common-layout'>
-        {url === '#/play' ? (
+        {url === '/play' ? (
           <Content className='content-waper'>{children}</Content>
         ) : (
           <React.Fragment>
-            <Header style={{ backgroundColor: 'white' }}>智能驾驶开发平台</Header>
+            <Header className='layouit-header'>智能驾驶开发平台</Header>
             <Layout>
               <Sider
-                style={{ backgroundColor: 'white' }}
+                style={{ backgroundColor: 'white', width: 120 }}
                 collapsible
                 collapsed={collapsed}
                 onCollapse={this.onCollapse}

@@ -13,12 +13,13 @@ const config = {
   // optimization: optimization(envName),
   devServer: {
     contentBase: path.join(__dirname, 'dist'),
+    historyApiFallback: true,
     compress: true,
     port: 8088,
     hot: true
-  },
-  devtool: 'source-map'
+  }
 };
 config.plugins.push(new webpack.DefinePlugin(envDefine));
+config.devtool = 'cheap-module-source-map'; // 慢速，查错时用
 
 module.exports = config;

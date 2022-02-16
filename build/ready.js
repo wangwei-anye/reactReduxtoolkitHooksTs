@@ -5,6 +5,7 @@ const rootPath = path.resolve(__dirname, '../');
 const dist = path.resolve(rootPath, 'dist');
 const staticInput = path.resolve(rootPath, 'public');
 const staticOutput = path.resolve(rootPath, 'dist/static');
+console.log('copy static files..............................................');
 
 fs.emptyDirSync(dist); // clean cache
 fs.ensureDirSync(staticInput);

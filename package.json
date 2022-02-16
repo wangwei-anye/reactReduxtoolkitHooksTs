@@ -19,8 +19,11 @@
     "base64-js": "^1.5.1",
     "buffer": "^6.0.3",
     "chance": "^1.1.8",
+    "copy-webpack-plugin": "^10.2.4",
+    "deck.gl": "^8.6.8",
     "http": "^0.0.1-security",
     "mockjs": "^1.1.0",
+    "nebula.gl": "^1.0.2-alpha.1",
     "qs": "^6.10.3",
     "react": "^17.0.2",
     "react-dom": "^17.0.2",
@@ -76,12 +79,14 @@
     "development": {
       "environment": "development",
       "API_BASE": "https://pcw-api.iqiyi.com",
-      "WEB_SOCKET": "ws://192.168.113.109:7001/ws"
+      "WEB_SOCKET": "ws://192.168.113.109:7001/ws",
+      "MAPBOX_ACCESS_TOKEN": "pk.eyJ1Ijoid2FuZ3dlaTE4aGFoYSIsImEiOiJja3l4d3FzYWwwM2hlMnFvNzg2MHV5bzVoIn0.vMyMGcGMMIIJZg9UeQJVTw"
     },
     "production": {
       "environment": "production",
       "API_BASE": "https://pcw-api.iqiyi.com",
-      "WEB_SOCKET": "ws://192.168.113.109:7001/ws"
+      "WEB_SOCKET": "ws://192.168.113.109:7001/ws",
+      "MAPBOX_ACCESS_TOKEN": "pk.eyJ1Ijoid2FuZ3dlaTE4aGFoYSIsImEiOiJja3l4d3FzYWwwM2hlMnFvNzg2MHV5bzVoIn0.vMyMGcGMMIIJZg9UeQJVTw"
     }
   }
 }

@@ -1,0 +1,49 @@
+#play-container {
+  position: fixed;
+  display: flex;
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+}
+#play-container #control-panel {
+  box-sizing: border-box;
+  width: 320px;
+  padding: 12px;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+  height: 100%;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+#play-container #control-panel hr {
+  margin: 24px -12px;
+  opacity: 0.3;
+}
+#play-container #log-panel {
+  flex-grow: 1;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+#play-container #map-view {
+  flex-grow: 1;
+  position: relative;
+}
+#play-container #timeline {
+  padding: 24px 0;
+  position: relative;
+}
+#play-container #hud {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+}
+#play-container #hub hr {
+  margin: 0;
+  opacity: 0.3;
+}
+

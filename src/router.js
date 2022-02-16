@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter as Router, Route, Switch } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
 import CommonLayout from './components/CommonLayout';
 import menuConfig from '@/config/menu.config.js';
 import Loadable from 'react-loadable';
