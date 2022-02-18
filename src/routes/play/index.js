@@ -19,14 +19,18 @@ import { COORDINATE_SYSTEM } from '@deck.gl/core';
 import { APP_SETTINGS, MAPBOX_TOKEN, MAP_STYLE, XVIZ_STYLE, CAR } from './lib/constants';
 import { getMapData } from './lib/requestData';
 import './style.less';
+import json from './lib/template-236.json';
 
 const TIMEFORMAT_SCALE = getXVIZConfig().TIMESTAMP_FORMAT === 'seconds' ? 1000 : 1;
 const exampleLog = require('./lib/log-from-stream').default;
-
-class Example extends PureComponent {
+class Play extends PureComponent {
   state = {
     log: exampleLog,
-    layers: [],
+    mapData: {
+      solidLines: [],
+      dashedLines: []
+    },
+    reRenderFlag: false,
     settings: {
       viewMode: 'PERSPECTIVE',
       showTooltip: false
@@ -36,11 +40,21 @@ class Example extends PureComponent {
   componentDidMount() {
     this.state.log.on('error', console.error).connect();
     this.getData();
+    // json.Vehicles[0].pos.length = 100;
+    // json.Vehicles[1].pos.length = 100;
+    // console.log(JSON.stringify(json));
+    console.log(getXVIZConfig());
   }
   getData = async () => {
     const params = new URLSearchParams(window.location.search);
     const mapData = await getMapData(params.get('mapName'));
     console.log(mapData);
+    this.setState({
+      mapData
+    });
+  };
+
+  renderLayer = (mapData) => {
     const temp1 = new PathLayer({
       coordinateSystem: COORDINATE_SYSTEM.METER_OFFSETS,
       coordinateOrigin: [0, 0, 0],
@@ -50,7 +64,6 @@ class Example extends PureComponent {
       data: mapData.solidLines,
       getColor: (d) => [80, 88, 98],
       getTooltip: (e) => {
-        console.log(111);
         return '1111111';
       }
     });
@@ -66,23 +79,8 @@ class Example extends PureComponent {
       dashJustified: true,
       extensions: [new PathStyleExtension({ dash: true, highPrecisionDash: true })]
     });
-    let layers = [
-      // 高精地图图层
-      temp1,
-      temp2
-      // new PathLayer({
-      //   coordinateSystem: COORDINATE_SYSTEM.METER_OFFSETS,
-      //   coordinateOrigin: [0, 0, 0],
-      //   id: 'path-layer-lanes',
-      //   widthUnits: 'pixels',
-      //   rounded: true,
-      //   data: mapData.pointLines,
-      //   getColor: d => [80, 88, 98]
-      // })
-    ];
-    this.setState({
-      layers
-    });
+    let layers = [temp1, temp2];
+    return layers;
   };
 
   _onSettingsChange = (changedSettings) => {
@@ -91,9 +89,18 @@ class Example extends PureComponent {
     });
   };
 
-  render() {
-    const { log, settings, layers } = this.state;
+  //为了解决重新播放了  道路渲染出错的问题，从新渲染一下道路
+  onPlay = (e) => {
+    if (Number(e) < 0.2) {
+      this.setState({
+        reRenderFlag: !this.state.reRenderFlag
+      });
+    }
+  };
 
+  render() {
+    const { log, settings, mapData } = this.state;
+    const layers = this.renderLayer(mapData);
     return (
       <div id='play-container'>
         <div id='control-panel'>
@@ -101,12 +108,12 @@ class Example extends PureComponent {
           <hr />
           <XVIZPanel log={log} name='Camera' />
           <hr />
-          <Form
+          {/* <Form
             data={APP_SETTINGS}
             values={this.state.settings}
             onChange={this._onSettingsChange}
           />
-          <StreamSettingsPanel log={log} />
+          <StreamSettingsPanel log={log} /> */}
         </div>
         <div id='log-panel'>
           <div id='map-view' style={{ backgroundColor: 'lightgray' }}>
@@ -149,7 +156,8 @@ class Example extends PureComponent {
             <PlaybackControl
               width='100%'
               log={log}
-              formatTimestamp={(x) => new Date(x * TIMEFORMAT_SCALE).toUTCString()}
+              onSeek={this.onPlay}
+              formatTimestamp={(x) => x}
             />
           </div>
         </div>
@@ -158,4 +166,4 @@ class Example extends PureComponent {
   }
 }
 
-export default Example;
+export default Play;

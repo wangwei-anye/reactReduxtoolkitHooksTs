@@ -1,3 +1,10 @@
-.title {
-  color: red;
+.map-edit-wrap {
+  overflow: hidden;
+  .map-box {
+    overflow: hidden;
+    height: calc(100vh - 44px);
+    display: block;
+    box-sizing: border-box;
+    position: relative; //地图的超出部分才能隐藏
+  }
 }

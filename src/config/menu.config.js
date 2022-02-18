@@ -4,7 +4,7 @@ import Loadable from 'react-loadable';
 import Loading from '@/components/Loading';
 import MapEdit from '@/routes/mapEdit';
 import CaseLib from '@/routes/caseLib';
-
+import Test from '@/routes/test';
 // const CaseLib = Loadable({
 //   loader: () => import('@/routes/caseLib'),
 //   loading: Loading,
@@ -18,6 +18,12 @@ const Task = Loadable({
 
 // const MapEdit = Loadable({
 //   loader: () => import('@/routes/mapEdit'),
+//   loading: Loading,
+//   delay: 300
+// });
+
+// const Test = Loadable({
+//   loader: () => import('@/routes/test'),
 //   loading: Loading,
 //   delay: 300
 // });
@@ -43,5 +49,12 @@ export default [
     icon: <ScheduleOutlined />,
     url: '/map-edit',
     component: MapEdit
+  },
+  {
+    id: 'test',
+    title: '测试',
+    icon: <ScheduleOutlined />,
+    url: '/test',
+    component: Test
   }
 ];

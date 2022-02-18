@@ -8,9 +8,16 @@ export default function (url) {
       .then((file_text) => {
         Module['FS_createDataFile']('.', 'e6mini.xodr', file_text, true, true);
         var isLoad = Module.Position.LoadOpenDrivePath('./e6mini.xodr');
-        var referenceLineArr = [];
-        var solidLineArr = [];
-        var brokenLineArr = [];
+        var solidLineObj = {
+          name: 'solidLine',
+          color: '',
+          path: []
+        };
+        var brokenLineObj = {
+          name: 'brokenLine',
+          color: '',
+          path: []
+        };
 
         var od = Module.Position.GetOpenDrive();
         for (var r = 0; r < od.GetNumOfRoads(); r++) {
@@ -49,25 +56,23 @@ export default function (url) {
                     if (roadmarkType == Module.RoadMarkType.BROKEN) {
                       //虚线
                       var points = curr_osi_rm.GetPoints();
+                      var pathResult = [];
                       for (var q = 0; q < points.size(); q++) {
                         var point = curr_osi_rm.GetPoint(q);
-                        brokenLineArr.push({
-                          x: point.x,
-                          y: point.y,
-                          color: roadmarkColor
-                        });
+                        pathResult.push([point.x, point.y]);
                       }
+                      brokenLineObj.color = '#ed1c24';
+                      brokenLineObj.path = pathResult;
                     } else if (roadmarkType == Module.RoadMarkType.SOLID) {
                       //实线
                       var points = curr_osi_rm.GetPoints();
+                      var pathResult = [];
                       for (var q = 0; q < points.size(); q++) {
                         var point = curr_osi_rm.GetPoint(q);
-                        solidLineArr.push({
-                          x: point.x,
-                          y: point.y,
-                          color: roadmarkColor
-                        });
+                        pathResult.push([point.x, point.y]);
                       }
+                      solidLineObj.color = '#ed1c24';
+                      solidLineObj.path = pathResult;
                     } else {
                       //实线
                       var points = curr_osi_rm.GetPoints();
@@ -81,24 +86,20 @@ export default function (url) {
               }
 
               /*****reference line*****************/
-              var curr_osi = lane.GetOSIPoints();
-              var points = curr_osi_rm.GetPoints();
-              for (var q = 0; q < curr_osi_rm.GetPoints().size(); q++) {
-                var point = curr_osi_rm.GetPoint(q);
-                referenceLineArr.push({
-                  x: point.x,
-                  y: point.y
-                });
-              }
+              // var curr_osi = lane.GetOSIPoints();
+              // var points = curr_osi_rm.GetPoints();
+              // for (var q = 0; q < curr_osi_rm.GetPoints().size(); q++) {
+              // var point = curr_osi_rm.GetPoint(q);
+              // pathResult.push({
+              //   x: point.x,
+              //   y: point.y
+              // });
+              // }
               /******reference line****************/
             }
           }
         }
-        return {
-          referenceLineArr: referenceLineArr,
-          solidLineArr: solidLineArr,
-          brokenLineArr: brokenLineArr
-        };
+        return [solidLineObj, brokenLineObj];
       });
   });
 }
