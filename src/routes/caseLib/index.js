@@ -8,7 +8,8 @@ import {
   editSuccessFile,
   editStartFile,
   selectCaseLib,
-  getTreeData
+  getTreeData,
+  getMenuData
 } from './slice';
 import CaseBox from './caseBox';
 
@@ -25,6 +26,7 @@ const Demo = () => {
   }
 
   useEffect(() => {
+    dispatch(getMenuData());
     dispatch(getTreeData());
   }, []);
 

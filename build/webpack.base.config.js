@@ -104,7 +104,9 @@ const config = {
     new CopyWebpackPlugin({
       patterns: [
         { from: 'public/libjsesmini.wasm', to: 'libjsesmini.wasm' },
-        { from: 'public/e6mini.xodr', to: 'e6mini.xodr' }
+        { from: 'public/e6mini.xodr', to: 'e6mini.xodr' },
+        { from: 'public/libjsesmini.wasm', to: 'js/libjsesmini.wasm' },
+        { from: 'public/e6mini.xodr', to: 'js/e6mini.xodr' }
       ]
     })
   ]

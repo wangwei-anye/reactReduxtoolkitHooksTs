@@ -1,5 +1,5 @@
 import React from 'react';
-import { ScheduleOutlined, FolderOpenOutlined } from '@ant-design/icons';
+import { ScheduleOutlined, FolderOpenOutlined, FormOutlined } from '@ant-design/icons';
 import Loadable from 'react-loadable';
 import Loading from '@/components/Loading';
 import MapEdit from '@/routes/mapEdit';
@@ -46,7 +46,7 @@ export default [
   {
     id: 'map-edit',
     title: '地图编辑',
-    icon: <ScheduleOutlined />,
+    icon: <FormOutlined />,
     url: '/map-edit',
     component: MapEdit
   },

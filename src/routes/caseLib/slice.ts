@@ -1,6 +1,6 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { AppThunk, RootState } from '../../models/store';
-import { getTreeDataApi } from '@/services/caseLib';
+import { getTreeDataApi, getMenuDataApi } from '@/services/caseLib';
 
 interface caseLibState {
   treeData: Array<object>;
@@ -14,6 +14,12 @@ const initialState: caseLibState = {
 
 export const getTreeData = createAsyncThunk('caseLib/getTreeData', async () => {
   const data = await getTreeDataApi();
+  return data;
+});
+
+export const getMenuData = createAsyncThunk('caseLib/getMenuData', async () => {
+  const data = await getMenuDataApi();
+  console.log(data);
   return data;
 });
 

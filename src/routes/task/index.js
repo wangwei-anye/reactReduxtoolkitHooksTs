@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
-import { Table, Card, Tabs, Button, Input } from 'antd';
+import { Table, Card, Tabs, Button, Input, Divider } from 'antd';
 import { PlayCircleOutlined } from '@ant-design/icons';
 import LoadingCom from '@/components/LoadingCom';
 import {
@@ -48,7 +48,7 @@ const Task = () => {
     }
   ];
   const toPlay = () => {
-    window.open('/play');
+    window.open('/play?fileUrl=replay/template-236.json');
   };
 
   useEffect(() => {
@@ -66,14 +66,17 @@ const Task = () => {
                   <div className='txt'>测试中</div>
                   <div className='num'>9</div>
                 </div>
+                <Divider type='vertical' className='divider' />
                 <div className='box'>
                   <div className='txt'>排队中</div>
                   <div className='num'>9</div>
                 </div>
+                <Divider type='vertical' className='divider' />
                 <div className='box'>
                   <div className='txt'>可提交案例</div>
-                  <div className='num'>9</div>
+                  <div className='num'>8</div>
                 </div>
+                <Divider type='vertical' className='divider' />
                 <div className='box'>
                   <div className='txt'>前方等待案例数</div>
                   <div className='num'>9</div>

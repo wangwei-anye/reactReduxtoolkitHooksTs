@@ -28,3 +28,5 @@ patterns: [
 })
 
 5、地图的容器要设置 position: relative; 地图超出部分才隐藏
+
+6、后端提供的 json 数据需要经过 nodejs 服务解析为 xviz 数据流，才能给 streetscape.gl 使用

@@ -1,6 +1,10 @@
 import request from '@/utils/request';
 import { API_BASE } from '@/constants';
 
+export function getMenuDataApi() {
+  return request(`http://192.168.113.109:9091/menu/getChildrenMenu?id=1495941982176391170`);
+}
+
 export function getTreeDataApi() {
   if (localStorage.treeData) {
     return JSON.parse(localStorage.treeData);
@@ -16,22 +20,5 @@ export function getTreeDataApi() {
       key: '1',
       isEditable: true
     }
-    // {
-    //   title: 'new',
-    //   key: '2',
-    //   isEditable: false,
-    //   children: [
-    //     {
-    //       title: 'leaf 0-0',
-    //       key: '2-0',
-    //       isEditable: true
-    //     },
-    //     {
-    //       title: 'leaf 22',
-    //       key: '2-1',
-    //       isEditable: false
-    //     }
-    //   ]
-    // }
   ];
 }

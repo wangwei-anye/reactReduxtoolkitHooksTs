@@ -7,22 +7,22 @@ export const CAR = CarMesh.sedan({
   length: 4.3,
   width: 2.2,
   height: 1.5,
-  color: [160, 160, 160]
-})
+  color: [255, 215, 0]
+});
 
 export const APP_SETTINGS = {
   viewMode: {
     type: 'select',
     title: 'View Mode',
-    data: {TOP_DOWN: 'Top Down', PERSPECTIVE: 'Perspective', DRIVER: 'Driver'}
+    data: { TOP_DOWN: 'Top Down', PERSPECTIVE: 'Perspective', DRIVER: 'Driver' }
   },
   showTooltip: {
     type: 'toggle',
     titile: 'Show Tooltip'
   }
-}
+};
 
 export const XVIZ_STYLE = {
-  '/tracklets/objects': [{name: 'selected', style: { fill_color: '#ff8000aa'}}],
-  '/lidar/points': [{style: {point_color_mode: 'ELEVATION'}}]
-}
+  '/tracklets/objects': [{ name: 'selected', style: { fill_color: '#ff8000aa' } }],
+  '/lidar/points': [{ style: { point_color_mode: 'ELEVATION' } }]
+};

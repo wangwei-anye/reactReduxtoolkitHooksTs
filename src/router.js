@@ -19,14 +19,22 @@ const Play = Loadable({
   loading: Loading,
   delay: 300
 });
+const Login = Loadable({
+  loader: () => import('@/routes/login'),
+  loading: Loading,
+  delay: 300
+});
 
 function routerConfig() {
   return (
     <Router>
-      <CommonLayout>
-        <Switch>{getMenuRoute(menuConfig)}</Switch>
-        <Route path={'/play'} component={Play} />
-      </CommonLayout>
+      <Switch>
+        <Route path={'/login'} exact component={Login} />
+        <Route path={'/play'} exact component={Play} />
+        <CommonLayout>
+          <Switch>{getMenuRoute(menuConfig)}</Switch>
+        </CommonLayout>
+      </Switch>
     </Router>
   );
 }
