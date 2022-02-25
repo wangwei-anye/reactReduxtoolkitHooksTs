@@ -18,11 +18,16 @@ import { PathStyleExtension } from '@deck.gl/extensions';
 import { COORDINATE_SYSTEM } from '@deck.gl/core';
 import { APP_SETTINGS, MAPBOX_TOKEN, MAP_STYLE, XVIZ_STYLE, CAR } from './lib/constants';
 import getDataFromXodr from '@/utils/getDataFromXodr';
+import lodash from 'lodash';
+import qs from 'qs';
 import './style.less';
 
 const TIMEFORMAT_SCALE = getXVIZConfig().TIMESTAMP_FORMAT === 'seconds' ? 1000 : 1;
 const exampleLog = require('./lib/log-from-stream').default;
 let clickNum = 0;
+let maxClickNum = 5;
+let XVIDready = false;
+let mapReady = false;
 class Play extends PureComponent {
   state = {
     log: exampleLog,
@@ -39,7 +44,15 @@ class Play extends PureComponent {
   };
 
   componentDidMount() {
-    this.state.log.on('error', console.error).connect();
+    const that = this;
+    this.state.log
+      .on('ready', () => {
+        console.log('ready');
+        XVIDready = true;
+        that.ready();
+      })
+      .on('error', console.error)
+      .connect();
     this.getData();
     // console.log(getXVIZConfig());
   }
@@ -47,32 +60,40 @@ class Play extends PureComponent {
     this.setState({
       loading: true
     });
-    const mapData = await getDataFromXodr();
-    console.log(mapData);
-    setTimeout(() => {
-      this.setState({
-        loading: false
-      });
-    }, 1000);
+    let prarms = qs.parse(lodash.split(window.location.search, '?')[1]);
+    const mapData = await getDataFromXodr(prarms.mapUrl);
+    console.log('map load');
+    mapReady = true;
     if (mapData) {
       this.setState({
         mapData
       });
     }
-    //自动播放
-    const intervalId = setInterval(() => {
-      clickNum++;
-      if (
-        document.getElementsByClassName('css-1eupenj') &&
-        document.getElementsByClassName('css-1eupenj').length > 0
-      ) {
-        document.getElementsByClassName('css-1eupenj')[0].click();
-        clearInterval(intervalId);
-      }
-      if (clickNum > 3) {
-        clearInterval(intervalId);
-      }
-    }, 1000);
+    this.ready();
+  };
+
+  ready = () => {
+    if (mapReady && XVIDready) {
+      this.setState({
+        loading: false
+      });
+
+      //自动播放
+      const intervalId = setInterval(() => {
+        clickNum++;
+        console.log('click');
+        if (
+          document.getElementsByClassName('css-1eupenj') &&
+          document.getElementsByClassName('css-1eupenj').length > 0
+        ) {
+          document.getElementsByClassName('css-1eupenj')[0].click();
+          clearInterval(intervalId);
+        }
+        if (clickNum > maxClickNum) {
+          clearInterval(intervalId);
+        }
+      }, 1000);
+    }
   };
 
   renderLayer = (mapData) => {
@@ -126,7 +147,7 @@ class Play extends PureComponent {
       <div className='play-wrap'>
         {loading ? (
           <div className='loading-mask'>
-            <div>地图加载中，请稍等。。。</div>
+            <div>资源加载中，请稍等。。。</div>
           </div>
         ) : null}
         <div id='play-container'>

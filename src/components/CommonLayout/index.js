@@ -24,7 +24,7 @@ class CommonLayout extends React.PureComponent {
       <Layout className='common-layout'>
         <React.Fragment>
           <Header className='layouit-header'>
-            智能驾驶开发平台
+            国汽智控云端自动驾驶仿真测试平台
             <div className='userName'>用户名</div>
             <div className='logout' onClick={this.logout}>
               <Tooltip placement='bottom' title={'登出'}>

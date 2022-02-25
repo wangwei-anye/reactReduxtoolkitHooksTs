@@ -24,8 +24,15 @@ const getMenu = (menuData) => {
 };
 
 const Sidebar = () => {
+  const pathname = window.location.pathname;
+  const selectedKeys = [];
+  for (let i = 0; i < menuConfig.length; i++) {
+    if (menuConfig[i].url === pathname) {
+      selectedKeys.push(menuConfig[i].id);
+    }
+  }
   return (
-    <Menu defaultSelectedKeys={[]} defaultOpenKeys={[]} mode='inline'>
+    <Menu defaultSelectedKeys={selectedKeys} defaultOpenKeys={[]} mode='inline'>
       {getMenu(menuConfig)}
     </Menu>
   );

@@ -1,9 +1,8 @@
 import { libjsesmini } from './libjsesmini';
 import { ASSERT_SERVE } from '@/constants';
-export default function (url) {
+export default function (mapUrl) {
   return libjsesmini()().then((Module) => {
-    // return fetch('./e6mini.xodr', {
-    return fetch(`${ASSERT_SERVE}/download/outOP210225.xodr`, {
+    return fetch(`${ASSERT_SERVE}/${mapUrl}`, {
       method: 'GET',
       mode: 'cors'
     })
@@ -11,8 +10,8 @@ export default function (url) {
         return file_data.text();
       })
       .then((file_text) => {
-        Module['FS_createDataFile']('.', 'e6mini.xodr', file_text, true, true);
-        var isLoad = Module.Position.LoadOpenDrivePath('./e6mini.xodr');
+        Module['FS_createDataFile']('.', 'tempMapFile.xodr', file_text, true, true);
+        var isLoad = Module.Position.LoadOpenDrivePath('./tempMapFile.xodr');
 
         var totalLines = {
           solidLines: [],

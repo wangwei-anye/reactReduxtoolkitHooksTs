@@ -37,10 +37,20 @@ async function buildXvizData(fileUrl) {
   const resultData = await axios
     .get('http://192.168.113.109:8080/download/' + fileUrl)
     .then(function (response) {
-      const jsondata = JSON.stringify(response.data);
-      const autoCar = JSON.parse(jsondata).Vehicles[1];
-      const obstacleCar = JSON.parse(jsondata).Vehicles[0];
-      const timeLong = autoCar.pos[autoCar.pos.length - 1].timestamp;
+      const jsondata = response.data;
+      let autoCar = {};
+      let obstacleCarArr = [];
+      if (jsondata.Vehicles.length === 0) {
+        return [];
+      }
+      for (let i = 0; i < jsondata.Vehicles.length; i++) {
+        if (jsondata.Vehicles[i].id === 0) {
+          autoCar = jsondata.Vehicles[i];
+        } else {
+          obstacleCarArr.push(jsondata.Vehicles[i]);
+        }
+      }
+      const timeLong = autoCar.pos[autoCar.pos.length - 1].frameTime;
 
       const xvizMetaBuilder = new XVIZMetadataBuilder();
       xvizMetaBuilder
@@ -96,55 +106,56 @@ async function buildXvizData(fileUrl) {
       const metaData = JSON.stringify(envelopdMsg);
       const resultArr = [metaData];
 
-      obstacleCar.pos.forEach((element, index) => {
-        const timestamp = element['timestamp'];
+      autoCar.pos.forEach((item, index) => {
+        const timestamp = item['frameTime'];
         const xvizBuilder = new XVIZBuilder();
-        const posX = element.x;
-        const posY = element.y;
-
-        // 直接相加减计算坐标存在问题，没有考虑航向，导致障碍车车头角度不会变化
-        // const polygon1 = [posX - lenght/2, posY - width/2, 0];
-        // const polygon2 = [posX - lenght/2, posY + width/2, 0];
-        // const polygon3 = [posX + lenght/2, posY + width/2, 0];
-        // const polygon4 = [posX + lenght/2, posY - width/2, 0];
-        const polygonPos = calculatePlygon(posX, posY, element.radian);
-
         xvizBuilder
           .pose(VEHICLE_POSE)
           .timestamp(timestamp)
           .mapOrigin(0, 0, 0) // 如需修改，客户端中地图coordinateOrigin需同步修改，复杂车辆和地图将无法匹配
           // .position(0, 0, 0)
           // .mapOrigin(114.064855, 22.672703, 0)
-          .position(autoCar.pos[index].x, autoCar.pos[index].y, 0)
-          .orientation(0, 0, autoCar.pos[index].radian);
+          .position(item.x, item.y, 0)
+          .orientation(0, 0, item.radian);
 
         let acc = 0;
         let velocity = 0;
-        if (autoCar.pos[index].acceleration > -9) {
-          acc = autoCar.pos[index].acceleration;
-          velocity = autoCar.pos[index].velocity;
+        if (item.acceleration > -9) {
+          acc = item.acceleration;
+          velocity = item.velocity;
         } else {
-          acc = autoCar.pos[index].acceleration * 0.6;
-          velocity = autoCar.pos[index].velocity * 0.6;
+          acc = item.acceleration * 0.6;
+          velocity = item.velocity * 0.6;
         }
 
         xvizBuilder.timeSeries(VEHICLE_ACCELERATION).timestamp(timestamp).value(acc);
 
         xvizBuilder.timeSeries(VEHICLE_VELOCITY).timestamp(timestamp).value(velocity);
 
-        xvizBuilder.timeSeries(VEHICLE_WHEEL).timestamp(timestamp).value(autoCar.pos[index].radian);
+        xvizBuilder.timeSeries(VEHICLE_WHEEL).timestamp(timestamp).value(item.radian);
 
         const line = [];
-        autoCar.pos[index]['trajectory'].forEach((val) => {
+        item['trajectory'].forEach((val) => {
           line.push([val.x, val.y, val.z]);
         });
 
         //弹道
         xvizBuilder.primitive(VEHICLE_TRAJECTORY).polyline(line).id('object-2');
 
-        xvizBuilder.timeSeries('/velocity').timestamp(timestamp).value(autoCar.pos[index].velocity);
-        //障碍物
-        xvizBuilder.primitive('/object/shape').polygon(polygonPos).id('object-1');
+        xvizBuilder.timeSeries('/velocity').timestamp(timestamp).value(item.velocity);
+
+        //障碍物 列表
+        for (let k = 0; k < obstacleCarArr.length; k++) {
+          if (obstacleCarArr[k].pos[index]) {
+            const posX = obstacleCarArr[k].pos[index].x;
+            const posY = obstacleCarArr[k].pos[index].y;
+            const polygonPos = calculatePlygon(posX, posY, obstacleCarArr[k].pos[index].radian);
+            xvizBuilder
+              .primitive('/object/shape')
+              .polygon(polygonPos)
+              .id('polygon-' + k);
+          }
+        }
 
         const msg = {
           type: 'xviz/state_update',
@@ -156,7 +167,7 @@ async function buildXvizData(fileUrl) {
       return resultArr;
     })
     .catch(function (error) {
-      console.log('error: get json file error');
+      console.log('error: get json file error ' + new Date().toLocaleString());
       return [];
     });
   return resultData;

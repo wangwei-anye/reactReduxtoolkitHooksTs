@@ -3,3 +3,4 @@ export const API_BASE = process.env.API_BASE;
 export const WEB_SOCKET = process.env.WEB_SOCKET;
 export const ASSERT_SERVE = process.env.ASSERT_SERVE;
 export const MAPBOX_ACCESS_TOKEN = process.env.MAPBOX_ACCESS_TOKEN;
+export const DEFAULT_PAGE_SIZE = 6;

@@ -11,6 +11,7 @@ import {
   StopOutlined,
   PauseCircleOutlined
 } from '@ant-design/icons';
+import { DEFAULT_PAGE_SIZE } from '@/constants';
 import { selectTask, getData } from './slice';
 import './index.less';
 const { TabPane } = Tabs;
@@ -18,18 +19,19 @@ const { Search } = Input;
 
 const Task = () => {
   const dispatch = useDispatch();
-  const { loading, list } = useSelector(selectTask);
+  // const [current, setCurrent] = useState(1);
+  const { loading, listData } = useSelector(selectTask);
 
   const columns = [
     {
-      title: '姓名',
+      title: '任务名称',
       dataIndex: 'name',
       key: 'name'
     },
     {
-      title: '年龄',
-      dataIndex: 'focus',
-      key: 'focus'
+      title: '状态',
+      dataIndex: 'state',
+      key: 'state'
     },
     {
       title: '回放',
@@ -48,12 +50,32 @@ const Task = () => {
     }
   ];
   const toPlay = () => {
-    window.open('/play?fileUrl=replay/template-236.json');
+    window.open(
+      '/play?fileUrl=replay/multi_intersections.json&mapUrl=download/multi_intersections.xodr'
+    );
   };
 
   useEffect(() => {
-    dispatch(getData());
+    dispatch(
+      getData({
+        current: 1,
+        size: DEFAULT_PAGE_SIZE,
+        state: 1
+      })
+    );
   }, []);
+
+  const paginationChangeHandle = (value) => {
+    // setCurrent(value);
+    dispatch(
+      getData({
+        current: value,
+        size: DEFAULT_PAGE_SIZE,
+        state: 1
+      })
+    );
+  };
+
   const onSearch = (value) => console.log(value);
   return (
     <div className='task-wrap'>
@@ -84,28 +106,28 @@ const Task = () => {
               </div>
               <div className='item-list'>
                 <div className='item'>
-                  <Button type='primary' icon={<CaretRightOutlined />} size={20}></Button>
+                  <Button type='primary' disabled icon={<CaretRightOutlined />} size={20}></Button>
                   <div>开始</div>
                 </div>
                 <div className='item'>
-                  <Button type='primary' icon={<PauseCircleOutlined />} size={20}></Button>
+                  <Button type='primary' disabled icon={<PauseCircleOutlined />} size={20}></Button>
                   <div>暂停</div>
                 </div>
                 <div className='item'>
-                  <Button type='primary' icon={<StopOutlined />} size={20}></Button>
+                  <Button type='primary' disabled icon={<StopOutlined />} size={20}></Button>
                   <div>停止</div>
                 </div>
                 <div className='item'>
-                  <Button type='primary' icon={<DeleteOutlined />} size={20}></Button>
+                  <Button type='primary' disabled icon={<DeleteOutlined />} size={20}></Button>
                   <div>删除</div>
                 </div>
                 <div className='item'>
-                  <Button type='primary' icon={<ReloadOutlined />} size={20}></Button>
+                  <Button type='primary' disabled icon={<ReloadOutlined />} size={20}></Button>
                   <div>刷新</div>
                 </div>
               </div>
               <div className='input-box'>
-                <Search placeholder='input search text' onSearch={onSearch} enterButton />
+                <Search onSearch={onSearch} enterButton />
               </div>
             </div>
           </Card>
@@ -113,7 +135,17 @@ const Task = () => {
             {loading ? (
               <LoadingCom />
             ) : (
-              <Table dataSource={list} pagination={{ pageSize: 5 }} columns={columns} />
+              <Table
+                dataSource={listData.records}
+                pagination={{
+                  // current: current,
+                  pageSize: DEFAULT_PAGE_SIZE,
+                  position: ['bottomCenter'],
+                  total: listData.total,
+                  onChange: paginationChangeHandle
+                }}
+                columns={columns}
+              />
             )}
           </Card>
         </TabPane>
@@ -122,20 +154,20 @@ const Task = () => {
             <div className='search-box'>
               <div className='item-list item-list2'>
                 <div className='item'>
-                  <Button type='primary' icon={<RollbackOutlined />} size={20}></Button>
+                  <Button type='primary' disabled icon={<RollbackOutlined />} size={20}></Button>
                   <div>重测</div>
                 </div>
                 <div className='item'>
-                  <Button type='primary' icon={<DeleteOutlined />} size={20}></Button>
+                  <Button type='primary' disabled icon={<DeleteOutlined />} size={20}></Button>
                   <div>删除</div>
                 </div>
                 <div className='item'>
-                  <Button type='primary' icon={<ReloadOutlined />} size={20}></Button>
+                  <Button type='primary' disabled icon={<ReloadOutlined />} size={20}></Button>
                   <div>刷新</div>
                 </div>
               </div>
               <div className='input-box'>
-                <Search placeholder='input search text' onSearch={onSearch} enterButton />
+                <Search onSearch={onSearch} enterButton />
               </div>
             </div>
           </Card>
@@ -143,7 +175,17 @@ const Task = () => {
             {loading ? (
               <LoadingCom />
             ) : (
-              <Table dataSource={list} pagination={{ pageSize: 5 }} columns={columns} />
+              <Table
+                dataSource={listData.records}
+                pagination={{
+                  // current: current,
+                  pageSize: DEFAULT_PAGE_SIZE,
+                  position: ['bottomCenter'],
+                  total: listData.total,
+                  onChange: paginationChangeHandle
+                }}
+                columns={columns}
+              />
             )}
           </Card>
         </TabPane>

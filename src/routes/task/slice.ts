@@ -1,65 +1,50 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { AppThunk, RootState } from '../../models/store';
-import { getDataApi } from '@/services/login';
+import { getListApi } from '@/services/task';
 
 interface taskState {
-  value: number;
-  list: Array<object>;
+  listData: object;
   loading: boolean;
 }
 
 const initialState: taskState = {
-  value: 999,
-  list: [],
+  listData: {
+    records: [],
+    total: 0
+  },
   loading: false
 };
 
-export const getData = createAsyncThunk('task/getData', async () => {
-  const { data } = await getDataApi();
-  return data.data;
+export const getData = createAsyncThunk('task/getData', async (query) => {
+  const { data } = await getListApi(query);
+  if (data.code === 200) {
+    for (let i = 0; i < data.data.records.length; i++) {
+      data.data.records[i].key = i;
+      data.data.records[i].name = '测试任务' + i;
+      data.data.records[i].state = '已完成';
+    }
+  }
+  return data;
 });
 
 export const taskSlice = createSlice({
   name: 'task',
   initialState,
-  reducers: {
-    increment: (state) => {
-      state.value += 1;
-    },
-    decrement: (state) => {
-      state.value -= 1;
-    },
-    incrementByAmount: (state, action: PayloadAction<number>) => {
-      state.value += action.payload;
-    }
-  },
+  reducers: {},
   extraReducers: {
     [getData.fulfilled.type](state, { payload }) {
-      payload.list.map((item: any, index: number) => {
-        item.key = index;
-        return item;
-      });
-      state.list = payload.list;
-      state.loading = false;
+      // state.loading = false;
+      state.listData = payload.data;
     },
     [getData.rejected.type](state, err) {
       console.log(err);
     },
     [getData.pending.type](state) {
-      state.loading = true;
+      // state.loading = true;
+      //会渲染2次
     }
   }
 });
-
-export const { increment, decrement, incrementByAmount } = taskSlice.actions;
-
-export const incrementAsync =
-  (amount: number): AppThunk =>
-  (dispatch) => {
-    setTimeout(() => {
-      dispatch(incrementByAmount(amount));
-    }, 1000);
-  };
 
 export const selectTask = (state: RootState) => state.task;
 

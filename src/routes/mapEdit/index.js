@@ -11,7 +11,7 @@ import {
 } from 'nebula.gl';
 import DeckGL from '@deck.gl/react';
 import { PathLayer, IconLayer } from '@deck.gl/layers';
-import { COORDINATE_SYSTEM, OrthographicView } from '@deck.gl/core';
+import { COORDINATE_SYSTEM } from '@deck.gl/core';
 import { PathStyleExtension } from '@deck.gl/extensions';
 import getDataFromXodr from '@/utils/getDataFromXodr';
 import VehicleImg from '../../assets/images/vehicle.png';
@@ -21,15 +21,18 @@ import {
   getBezierPointFromFeatures,
   CreateBezierPoints
 } from './lib/utils';
+import { createMapLayer, createCarIconLayer, createRouterLayer } from './lib/layers';
 import './index.less';
 const { Option } = Select;
-
+let isDropEnd = false; //拖动到map 的flag
 const MapEdit = () => {
+  //可编辑的 Feature   Indexes
   const [selectedFeatureIndexes, setSelectedFeatureIndexes] = useState([]);
   const [featuresCollection, setFeaturesCollection] = useState({
     type: 'FeatureCollection',
     features: []
   });
+
   const [mode, setMode] = useState(() => ViewMode);
   const [mapZoom, setMapZoom] = useState(15);
   const [viewState, useViewState] = useState({});
@@ -38,18 +41,15 @@ const MapEdit = () => {
   const [mapData, setMapData] = useState({ solidLines: [], brokenLines: [] });
   const getData = async () => {
     setLoading(true);
-    const result = await getDataFromXodr();
+    const result = await getDataFromXodr('download/multi_intersections.xodr');
     setLoading(false);
     setMapData(result);
   };
   useEffect(() => {
     const a = getData();
   }, []);
-
+  //地图 事件
   const onEdit = ({ updatedData, editType, editContext }) => {
-    console.log(updatedData);
-    console.log(editType);
-    console.log(editContext);
     if (editType === 'addTentativePosition') {
       // 加点
     }
@@ -59,49 +59,47 @@ const MapEdit = () => {
     if (editType === 'finishMovePosition') {
       // 移动完成
     }
+    if (editType === 'updateTentativeFeature') {
+      // 移动中
+      if (isDropEnd) {
+        // 刚拖动完的第一个移动事件
+        isDropEnd = false;
+        setFeaturesCollection((prevState) => {
+          console.log(prevState);
+          return {
+            type: 'FeatureCollection',
+            features: [
+              ...prevState.features,
+              {
+                type: 'Feature',
+                properties: {},
+                geometry: { type: 'Point', coordinates: editContext.feature.geometry.coordinates }
+              }
+            ]
+          };
+        });
+
+        const updatedSelectedFeatureIndexes = [
+          ...selectedFeatureIndexes,
+          selectedFeatureIndexes.length
+        ];
+        setSelectedFeatureIndexes(updatedSelectedFeatureIndexes);
+      }
+    }
+    console.log(updatedData);
+    console.log(editType);
+    console.log(editContext);
 
     const { featureIndexes } = editContext;
     if (featureIndexes) {
       const updatedSelectedFeatureIndexes = [...selectedFeatureIndexes, ...featureIndexes];
-      console.log(updatedData);
       setFeaturesCollection(updatedData);
       setSelectedFeatureIndexes(updatedSelectedFeatureIndexes);
     }
   };
-
-  const renderLayer = (mapData) => {
-    if (!mapData) {
-      return [];
-    }
-    const temp1 = new PathLayer({
-      coordinateSystem: COORDINATE_SYSTEM.METER_OFFSETS,
-      coordinateOrigin: [0, 0, 0],
-      id: 'path-layer-solid',
-      widthUnits: 'pixels',
-      rounded: true,
-      data: mapData.solidLines,
-      getColor: (d) => [255, 0, 0],
-      getTooltip: (e) => {
-        return '1111111';
-      }
-    });
-    const temp2 = new PathLayer({
-      coordinateSystem: COORDINATE_SYSTEM.METER_OFFSETS,
-      coordinateOrigin: [0, 0, 0],
-      id: 'path-layer-broken',
-      widthUnits: 'pixels',
-      rounded: true,
-      data: mapData.brokenLines,
-      getColor: (d) => [0, 0, 255],
-      getDashArray: [80, 180], //虚线   实线/总长度
-      dashJustified: true,
-      extensions: [new PathStyleExtension({ dash: true, highPrecisionDash: true })]
-    });
-    let layers = [temp1, temp2];
-    return layers;
-  };
-  const layers = renderLayer(mapData);
-
+  //------------------------------图层创建--------------------------------
+  //地图
+  const layers = createMapLayer(mapData);
   //可编辑图层
   const editableGeoJsonLayer = new EditableGeoJsonLayer({
     id: 'geojson-layer',
@@ -113,32 +111,14 @@ const MapEdit = () => {
     mode: mode,
     onEdit
   });
-
+  layers.push(editableGeoJsonLayer);
   //汽车绘画
   const iconLayerData = formatIconDataFromFeatures(featuresCollection);
-  const ICON_MAPPING = {
-    // 类似css 里的 background-image:position  width
-    marker: { x: 0, y: 0, width: 200, height: 99, mask: false },
-    marker2: { x: 0, y: 0, width: 200, height: 99, mask: false }
-  };
-  const iconLayers = new IconLayer({
-    id: 'icon-layer',
-    pickable: true,
-    data: iconLayerData,
-    iconAtlas: VehicleImg,
-    iconMapping: ICON_MAPPING,
-    getIcon: (d) => {
-      if (d.id === 1) {
-        return 'marker';
-      }
-      return 'marker2';
-    },
-    sizeUnits: 'pixels',
-    sizeScale: getIconScale(mapZoom),
-    getPosition: (d) => d.coordinates,
-    getSize: (d) => 5,
-    getAngle: (d) => d.angle
-  });
+  const iconLayers = createCarIconLayer('car-layer', iconLayerData, mapZoom);
+  layers.push(iconLayers);
+  // //拖动的汽车绘画
+  // const dropCarLayers = createCarIconLayer('drop-car-layer', dropCar, mapZoom);
+  // layers.push(dropCarLayers);
 
   //贝塞尔曲线绘画
   const points = getBezierPointFromFeatures(featuresCollection);
@@ -148,28 +128,17 @@ const MapEdit = () => {
       path: item
     };
   });
-
-  const routerLayers = new PathLayer({
-    id: 'route-layer',
-    data: routerData,
-    widthUnits: 'pixels',
-    rounded: true,
-    opacity: 0.8,
-    getWidth: (d) => 10,
-    getColor: (d) => [0, 255, 0],
-    getPath: (d) => d.path
-  });
-  //添加图层
-  layers.push(editableGeoJsonLayer);
-  layers.push(iconLayers);
+  const routerLayers = createRouterLayer('route-layer', routerData);
   layers.push(routerLayers);
 
+  //------------------------------事件监听--------------------------------
+  //map  视图变化
   const onViewStateChange = ({ viewState }) => {
     // console.log(viewState);
     setMapZoom(viewState.zoom);
     // useViewState(viewState);
   };
-
+  //map  模式变化
   const handleMapModeChange = (value) => {
     if (value === 'view') {
       setMode(() => ViewMode);
@@ -188,6 +157,23 @@ const MapEdit = () => {
     }
   };
 
+  //车辆拖动结束事件
+  const dragEnd = (e) => {
+    console.log(e);
+  };
+  //阻止默认事件才能触发drop
+  const dragEnterHandle = (e) => {
+    e.preventDefault();
+  };
+  const dragOverHandle = (e) => {
+    e.preventDefault();
+  };
+  //车辆拖动  到 map 事件
+  const dropHandle = (e) => {
+    console.log('drag target');
+    isDropEnd = true;
+  };
+
   //ViewState 会锁死视图  initialViewState 初始化视图
   return (
     <div className='map-edit-wrap'>
@@ -197,7 +183,12 @@ const MapEdit = () => {
             <Spin />
           </span>
         ) : (
-          <div className='map-box'>
+          <div
+            className='map-box'
+            onDragOver={dragOverHandle}
+            onDragEnter={dragEnterHandle}
+            onDrop={dropHandle}
+          >
             <DeckGL
               initialViewState={{
                 latitude: 0,
@@ -215,14 +206,29 @@ const MapEdit = () => {
         )}
       </div>
       <div className='control-wrap'>
-        <Select defaultValue='view' style={{ width: 120 }} onChange={handleMapModeChange}>
-          ViewMode
-          <Option value='view'>查看</Option>
-          <Option value='point'>点</Option>
-          <Option value='line'>线</Option>
-          <Option value='polygon'>多边形</Option>
-          <Option value='eidt'>编辑</Option>
-        </Select>
+        <div>
+          <Select defaultValue='view' style={{ width: 120 }} onChange={handleMapModeChange}>
+            ViewMode
+            <Option value='view'>查看</Option>
+            <Option value='point'>点</Option>
+            <Option value='line'>线</Option>
+            <Option value='polygon'>多边形</Option>
+            <Option value='eidt'>编辑</Option>
+          </Select>
+        </div>
+        <div>
+          <img
+            style={{
+              width: '100px',
+              height: '50px',
+              display: 'inline-block',
+              border: '1px solid red'
+            }}
+            draggable
+            onDragEnd={dragEnd}
+            src={VehicleImg}
+          ></img>
+        </div>
       </div>
     </div>
   );

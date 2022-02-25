@@ -8,10 +8,11 @@ import {
   editSuccessFile,
   editStartFile,
   selectCaseLib,
-  getTreeData,
-  getMenuData
+  getMenuData,
+  getListData
 } from './slice';
 import CaseBox from './caseBox';
+import { DEFAULT_PAGE_SIZE } from '@/constants';
 
 import './index.less';
 const { DirectoryTree } = Tree;
@@ -21,14 +22,32 @@ const Demo = () => {
   const [inputValue, setInputValue] = useState('');
   const dispatch = useDispatch();
   const { treeData } = useSelector(selectCaseLib);
-  if (treeData.length > 0) {
-    localStorage.treeData = JSON.stringify(treeData);
-  }
+  const { listData } = useSelector(selectCaseLib);
 
   useEffect(() => {
     dispatch(getMenuData());
-    dispatch(getTreeData());
   }, []);
+
+  useEffect(() => {
+    if (treeData.length > 0) {
+      setSelectKeys([treeData[0].key]);
+      queryList(treeData[0].key);
+    }
+  }, [treeData]);
+
+  const pageIndexChange = useCallback((value) => {
+    queryList(selectKeys[0], value);
+  });
+
+  const queryList = (menuId, current = 1) => {
+    dispatch(
+      getListData({
+        menuId,
+        current,
+        size: DEFAULT_PAGE_SIZE
+      })
+    );
+  };
 
   const createFileHandle = () => {
     dispatch(createFile(selectKeys[0]));
@@ -41,7 +60,9 @@ const Demo = () => {
   };
   const onSelect = (keys, info) => {
     setSelectKeys(keys);
-    console.log(keys);
+    if (keys.length > 0) {
+      queryList(keys[0]);
+    }
   };
   const blurHandle = (e) => {
     dispatch(editSuccessFile(inputValue));
@@ -66,9 +87,9 @@ const Demo = () => {
       } else {
         item.title = (
           <span
-            onDoubleClick={(e) => {
-              doubelClickHandle(item.key);
-            }}
+          // onDoubleClick={(e) => {
+          //   doubelClickHandle(item.key);
+          // }}
           >
             {item.title}
           </span>
@@ -108,7 +129,11 @@ const Demo = () => {
         </div>
       </div>
       <div className='content-box'>
-        <CaseBox></CaseBox>
+        <CaseBox
+          listData={listData}
+          menuId={selectKeys}
+          pageIndexChange={pageIndexChange}
+        ></CaseBox>
       </div>
     </div>
   );

@@ -1,25 +1,43 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { AppThunk, RootState } from '../../models/store';
-import { getTreeDataApi, getMenuDataApi } from '@/services/caseLib';
+import { getMenuDataApi, getListApi } from '@/services/caseLib';
 
 interface caseLibState {
   treeData: Array<object>;
+  listData: object;
   loading: boolean;
 }
 
 const initialState: caseLibState = {
   treeData: [],
+  listData: {
+    records: [],
+    total: 0
+  },
   loading: false
 };
 
-export const getTreeData = createAsyncThunk('caseLib/getTreeData', async () => {
-  const data = await getTreeDataApi();
-  return data;
-});
-
 export const getMenuData = createAsyncThunk('caseLib/getMenuData', async () => {
-  const data = await getMenuDataApi();
-  console.log(data);
+  const { data } = await getMenuDataApi();
+  const result = [];
+  if (data.code === 200) {
+    for (let i = 0; i < data.data.length; i++) {
+      result.push({
+        title: data.data[i].name,
+        key: data.data[i].id,
+        isEditable: false
+      });
+    }
+  }
+  return result;
+});
+export const getListData = createAsyncThunk('caseLib/getListData', async (query) => {
+  const { data } = await getListApi(query);
+  if (data.code === 200) {
+    for (let i = 0; i < data.data.records.length; i++) {
+      data.data.records[i].key = i;
+    }
+  }
   return data;
 });
 
@@ -81,25 +99,25 @@ const deleteChildrenFile = (data: Array<object>, key: string) => {
     });
   }
 };
-const editSuccessFileHadnle = (data: Array<object>, txt: string) => {
+const editSuccessFileHandle = (data: Array<object>, txt: string) => {
   return data.map((item: any) => {
     if (item.isEditable) {
       item.isEditable = false;
       item.title = txt;
     }
     if (item.children) {
-      editSuccessFileHadnle(item.children, txt);
+      editSuccessFileHandle(item.children, txt);
     }
     return item;
   });
 };
-const editStartFileHadnle = (data: Array<object>, key: string) => {
+const editStartFileHandle = (data: Array<object>, key: string) => {
   return data.map((item: any) => {
     if (item.key === key) {
       item.isEditable = true;
     }
     if (item.children) {
-      editStartFileHadnle(item.children, key);
+      editStartFileHandle(item.children, key);
     }
     return item;
   });
@@ -115,20 +133,27 @@ export const caseLibSlice = createSlice({
       state.treeData = deleteChildrenFile(state.treeData, action.payload);
     },
     editSuccessFile: (state, action: PayloadAction<string>) => {
-      state.treeData = editSuccessFileHadnle(state.treeData, action.payload);
+      state.treeData = editSuccessFileHandle(state.treeData, action.payload);
     },
     editStartFile: (state, action: PayloadAction<string>) => {
-      state.treeData = editStartFileHadnle(state.treeData, action.payload);
+      state.treeData = editStartFileHandle(state.treeData, action.payload);
     }
   },
   extraReducers: {
-    [getTreeData.fulfilled.type](state, { payload }) {
+    [getMenuData.fulfilled.type](state, { payload }) {
       state.treeData = payload;
     },
-    [getTreeData.rejected.type](state, err) {
-      console.log(111111111);
+    [getMenuData.rejected.type](state, err) {
+      console.log('getMenuData rejected');
     },
-    [getTreeData.pending.type](state) {}
+    [getMenuData.pending.type](state) {},
+    [getListData.fulfilled.type](state, { payload }) {
+      state.listData = payload.data;
+    },
+    [getListData.rejected.type](state, err) {
+      console.log('getListData rejected');
+    },
+    [getListData.pending.type](state) {}
   }
 });
 export const { createFile, deleteFile, editSuccessFile, editStartFile } = caseLibSlice.actions;

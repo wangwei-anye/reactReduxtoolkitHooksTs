@@ -1,0 +1,51 @@
+.task-wrap {
+  padding: 24px;
+}
+.task-wrap .search-box {
+  display: flex;
+  align-items: center;
+  height: 120px;
+}
+.task-wrap .search-box .tips-box {
+  flex: 0 0 350px;
+  margin-right: 30px;
+  height: 84px;
+  border-radius: 5px;
+  box-shadow: 0 2px 5px #ccc;
+  display: flex;
+  padding: 15px;
+}
+.task-wrap .search-box .tips-box .divider {
+  height: 50px !important;
+  background-color: '#ccc' !important;
+  width: 4px !important;
+}
+.task-wrap .search-box .tips-box .box {
+  flex: auto;
+}
+.task-wrap .search-box .tips-box .box:nth-child(1) {
+  color: #3091f2;
+}
+.task-wrap .search-box .tips-box .box:nth-child(2) {
+  color: #f8aa43;
+}
+.task-wrap .search-box .tips-box .box .num {
+  font-size: 20px;
+}
+.task-wrap .search-box .item-list {
+  flex: 0 0 300px;
+  display: flex;
+}
+.task-wrap .search-box .item-list .item {
+  flex: 1;
+}
+.task-wrap .search-box .item-list .item div {
+  padding-left: 3px;
+}
+.task-wrap .search-box .item-list2 {
+  flex: 0 0 180px;
+}
+.task-wrap .search-box .input-box {
+  flex: 0 0 300px;
+}
+

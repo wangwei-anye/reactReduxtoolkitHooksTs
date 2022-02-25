@@ -68,29 +68,34 @@ export const formatIconDataFromFeatures = (featuresCollection) => {
   for (let i = 0; i < featuresCollection.features.length; i++) {
     const len = featuresCollection.features[i].geometry.coordinates.length - 1;
     const type = featuresCollection.features[i].geometry.type;
-    if (type !== 'LineString') {
-      break;
-    }
-    for (let j = 0; j < featuresCollection.features[i].geometry.coordinates.length; j++) {
-      if (j === len && j >= 1) {
-        result.push({
-          id: i + '-' + j,
-          coordinates: featuresCollection.features[i].geometry.coordinates[j],
-          angle: calcAngle(
-            featuresCollection.features[i].geometry.coordinates[j - 1],
-            featuresCollection.features[i].geometry.coordinates[j]
-          )
-        });
-      } else {
-        result.push({
-          id: i + '-' + j,
-          coordinates: featuresCollection.features[i].geometry.coordinates[j],
-          angle: calcAngle(
-            featuresCollection.features[i].geometry.coordinates[j],
-            featuresCollection.features[i].geometry.coordinates[j + 1]
-          )
-        });
+    if (type === 'LineString') {
+      for (let j = 0; j < featuresCollection.features[i].geometry.coordinates.length; j++) {
+        if (j === len && j >= 1) {
+          result.push({
+            id: i + '-' + j,
+            coordinates: featuresCollection.features[i].geometry.coordinates[j],
+            angle: calcAngle(
+              featuresCollection.features[i].geometry.coordinates[j - 1],
+              featuresCollection.features[i].geometry.coordinates[j]
+            )
+          });
+        } else {
+          result.push({
+            id: i + '-' + j,
+            coordinates: featuresCollection.features[i].geometry.coordinates[j],
+            angle: calcAngle(
+              featuresCollection.features[i].geometry.coordinates[j],
+              featuresCollection.features[i].geometry.coordinates[j + 1]
+            )
+          });
+        }
       }
+    } else if (type === 'Point') {
+      result.push({
+        id: i + '-point',
+        coordinates: featuresCollection.features[i].geometry.coordinates,
+        angle: 90
+      });
     }
   }
   return result;

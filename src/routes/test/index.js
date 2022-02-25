@@ -1,21 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { Table, Card, Tabs, Button, Input } from 'antd';
-import { PlayCircleOutlined } from '@ant-design/icons';
-import LoadingCom from '@/components/LoadingCom';
-import {
-  ReloadOutlined,
-  DeleteOutlined,
-  RollbackOutlined,
-  CaretRightOutlined,
-  StopOutlined,
-  PauseCircleOutlined
-} from '@ant-design/icons';
-import { selectTask, getData } from './slice';
 import './index.less';
-
-const { TabPane } = Tabs;
-const { Search } = Input;
 
 const Test = () => {
   const start = () => {

@@ -81,15 +81,15 @@
   "_env_": {
     "development": {
       "environment": "development",
-      "API_BASE": "https://pcw-api.iqiyi.com",
-      "WEB_SOCKET": "ws://localhost:6555",
+      "API_BASE": "http://192.168.113.109:9091",
+      "WEB_SOCKET": "ws://192.168.112.113:6555",
       "ASSERT_SERVE": "http://192.168.113.109:8000",
       "MAPBOX_ACCESS_TOKEN": "pk.eyJ1Ijoid2FuZ3dlaTE4aGFoYSIsImEiOiJja3l4d3FzYWwwM2hlMnFvNzg2MHV5bzVoIn0.vMyMGcGMMIIJZg9UeQJVTw"
     },
     "production": {
       "environment": "production",
-      "API_BASE": "https://pcw-api.iqiyi.com",
-      "WEB_SOCKET": "ws://localhost:6555",
+      "API_BASE": "http://192.168.113.109:9091",
+      "WEB_SOCKET": "ws://192.168.112.113:6555",
       "ASSERT_SERVE": "http://192.168.113.109:8000",
       "MAPBOX_ACCESS_TOKEN": "pk.eyJ1Ijoid2FuZ3dlaTE4aGFoYSIsImEiOiJja3l4d3FzYWwwM2hlMnFvNzg2MHV5bzVoIn0.vMyMGcGMMIIJZg9UeQJVTw"
     }

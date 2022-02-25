@@ -1,12 +1,18 @@
 import React, { useState, useEffect } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Form, Input, Button, Checkbox } from 'antd';
+import { login } from '@/services/login';
 import './index.less';
 
 const Login = () => {
-  const onFinish = (values) => {
-    console.log('Success:', values);
-    window.location.href = '/caseLib';
+  const onFinish = async (values) => {
+    const { data } = await login({
+      username: values.username,
+      password: values.password
+    });
+    if (data.code === 200) {
+      window.location.href = '/case-lib';
+    }
   };
 
   const onFinishFailed = (errorInfo) => {
@@ -15,7 +21,7 @@ const Login = () => {
 
   return (
     <div className='login-wrap'>
-      <div className='title'>登入</div>
+      <div className='title'>欢迎使用</div>
       <Form
         name='basic'
         labelCol={{
@@ -32,7 +38,7 @@ const Login = () => {
         autoComplete='off'
       >
         <Form.Item
-          label='Username'
+          label='用户名'
           name='username'
           rules={[
             {
@@ -45,7 +51,7 @@ const Login = () => {
         </Form.Item>
 
         <Form.Item
-          label='Password'
+          label='密码'
           name='password'
           rules={[
             {
@@ -65,7 +71,7 @@ const Login = () => {
             span: 16
           }}
         >
-          <Checkbox>Remember me</Checkbox>
+          <Checkbox>记住</Checkbox>
         </Form.Item>
 
         <Form.Item
@@ -75,7 +81,7 @@ const Login = () => {
           }}
         >
           <Button type='primary' htmlType='submit'>
-            Submit
+            登入
           </Button>
         </Form.Item>
       </Form>

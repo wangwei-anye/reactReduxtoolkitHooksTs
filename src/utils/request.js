@@ -26,7 +26,7 @@ function checkStatus(response) {
  */
 export default function request(url, options) {
   // 配置默认headers
-  const headers = options && options.headers;
+  let headers = options && options.headers;
 
   if (options && options.method && options.method.toUpperCase() === 'POST') {
     headers = Object.assign(
@@ -60,10 +60,14 @@ export default function request(url, options) {
     .then(checkStatus)
     .then(parseJSON)
     .then((data) => {
+      if (data.code !== 200) {
+        message.destroy();
+        message.error(data.msg || '服务异常');
+      }
       return { data };
     })
     .catch((err) => {
-      message.error('服務異常');
+      message.error('服务异常');
       return { err };
     });
 }

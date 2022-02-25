@@ -1,0 +1,16 @@
+.login-wrap {
+  width: 400px;
+  border: 1px solid #ccc;
+  box-shadow: 0 2px 10px #ccc;
+  padding: 20px;
+  height: 300px;
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+}
+.login-wrap .title {
+  text-align: center;
+  margin-bottom: 20px;
+}
+
