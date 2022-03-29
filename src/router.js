@@ -1,15 +1,18 @@
 import React from 'react';
-import { BrowserRouter as Router, Route, Switch } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Switch, Redirect } from 'react-router-dom';
 import CommonLayout from './components/CommonLayout';
 import menuConfig from '@/config/menu.config.js';
 import Loadable from 'react-loadable';
 import Loading from '@/components/Loading';
+import MapEdit from '@/routes/mapEdit';
+import Doc from '@/routes/doc';
+import Test from '@/routes/test';
 const getMenuRoute = (menuData) => {
   return menuData.map((item) => {
     if (item.subMenu) {
       return getMenuRoute(item.subMenu);
     } else {
-      return <Route key={item.id} path={item.url} component={item.component} />;
+      return <Route key={item.id} path={item.url} exact component={item.component} />;
     }
   });
 };
@@ -31,8 +34,13 @@ function routerConfig() {
       <Switch>
         <Route path={'/login'} exact component={Login} />
         <Route path={'/play'} exact component={Play} />
+        <Route path={'/map-edit'} exact component={MapEdit} />
+        <Route path={'/doc'} exact component={Doc} />
+        <Route path={'/test'} exact component={Test} />
         <CommonLayout>
-          <Switch>{getMenuRoute(menuConfig)}</Switch>
+          <Switch>
+            {getMenuRoute(menuConfig)} <Redirect to='/case-lib' />
+          </Switch>
         </CommonLayout>
       </Switch>
     </Router>

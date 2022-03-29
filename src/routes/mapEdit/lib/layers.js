@@ -2,79 +2,95 @@ import { PathLayer, IconLayer } from '@deck.gl/layers';
 import { COORDINATE_SYSTEM } from '@deck.gl/core';
 import { PathStyleExtension } from '@deck.gl/extensions';
 import { getIconScale } from './utils';
-import VehicleImg from '../../../assets/images/vehicle.png';
+import { RESOURCE_TYPE } from './constant';
 //画地图
-export const createMapLayer = (mapData) => {
+export const createMapLayer = (mapData, showReference = true) => {
   if (!mapData) {
     return [];
   }
-  const temp1 = new PathLayer({
+  const solidLayer = new PathLayer({
     coordinateSystem: COORDINATE_SYSTEM.METER_OFFSETS,
     coordinateOrigin: [0, 0, 0],
     id: 'path-layer-solid',
-    widthUnits: 'pixels',
     rounded: true,
     data: mapData.solidLines,
-    getColor: (d) => [255, 0, 0]
+    getColor: [255, 255, 255, 255],
+    getWidth: (d) => 2,
+    widthUnits: 'pixels',
+    pickable: true,
+    zIndex: 2
   });
-  const temp2 = new PathLayer({
+  const brokenLayer = new PathLayer({
     coordinateSystem: COORDINATE_SYSTEM.METER_OFFSETS,
     coordinateOrigin: [0, 0, 0],
     id: 'path-layer-broken',
-    widthUnits: 'pixels',
     rounded: true,
     data: mapData.brokenLines,
-    getColor: (d) => [0, 0, 255],
-    getDashArray: [80, 180], //虚线   实线/总长度
+    getColor: [255, 255, 255, 255],
+    getWidth: 2,
+    widthUnits: 'pixels',
+    getDashArray: [30, 60], //虚线   实线/总长度
     dashJustified: true,
+    pickable: true,
+    zIndex: 1,
     extensions: [new PathStyleExtension({ dash: true, highPrecisionDash: true })]
   });
-  let layers = [temp1, temp2];
-  return layers;
+  const referenceLayer = new PathLayer({
+    coordinateSystem: COORDINATE_SYSTEM.METER_OFFSETS,
+    coordinateOrigin: [0, 0, 0],
+    id: 'path-layer-reference',
+    rounded: true,
+    capRounded: false,
+    data: mapData.referenceLines,
+    // getColor: [178, 178, 178, 255],
+    getColor: [59, 61, 64, 255],
+    getWidth: 3.8,
+    widthUnits: 'meters',
+    pickable: true,
+    zIndex: -1
+  });
+  return [referenceLayer, solidLayer, brokenLayer];
 };
-const ICON_MAPPING = {
-  // 类似css 里的 background-image:position  width
-  marker: { x: 0, y: 0, width: 200, height: 99, mask: false },
-  marker2: { x: 0, y: 0, width: 200, height: 99, mask: false }
-};
-
-//画车
-// [{"id":"0-0","coordinates":[0.004323616998977707,0.005716400778050557],"angle":280.4691786762281},
-// {"id":"0-1","coordinates":[0.0049072659425258795,0.0025578310250940596],"angle":285.1479218678896}]
-
-export const createCarIconLayer = (id, data, mapZoom) => {
+//画车 和 障碍物
+export const createCarIconLayer = (id, data, mapZoom, clickCallback) => {
   return new IconLayer({
     id,
     pickable: true,
     data,
-    iconAtlas: VehicleImg,
-    iconMapping: ICON_MAPPING,
-    getIcon: (d) => {
-      if (d.id === 1) {
-        return 'marker';
-      }
-      return 'marker2';
-    },
+    getIcon: (d) => ({
+      url: d.icon,
+      anchorY: d.anchorY,
+      width: d.w,
+      height: d.h
+    }),
     sizeUnits: 'pixels',
     sizeScale: getIconScale(mapZoom),
-    onClick: () => {
-      console.log(1111111);
+    onClick: (d) => {
+      if (d && d.object) {
+        console.log(d.object);
+        clickCallback(d.object.type, d.object.id);
+      }
     },
     getPosition: (d) => d.coordinates,
     getSize: (d) => 5,
-    getAngle: (d) => d.angle
+    getAngle: (d) => {
+      return parseInt(d.angle);
+    },
+    zIndex: 15
   });
 };
 //贝塞尔曲线绘画
 export const createRouterLayer = (id, data) => {
   return new PathLayer({
+    coordinateSystem: COORDINATE_SYSTEM.METER_OFFSETS,
+    coordinateOrigin: [0, 0, 0],
     id,
     data,
     widthUnits: 'pixels',
     rounded: true,
-    opacity: 0.5,
-    getWidth: (d) => 10,
-    getColor: (d) => [0, 255, 0],
-    getPath: (d) => d.path
+    getWidth: (d) => 2,
+    getColor: (d) => [0, 0, 255],
+    getPath: (d) => d.path,
+    zIndex: 4
   });
 };

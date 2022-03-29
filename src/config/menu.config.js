@@ -1,9 +1,15 @@
 import React from 'react';
-import { ScheduleOutlined, FolderOpenOutlined, FormOutlined } from '@ant-design/icons';
+import {
+  ScheduleOutlined,
+  FolderOpenOutlined,
+  FormOutlined,
+  FolderOutlined
+} from '@ant-design/icons';
 import Loadable from 'react-loadable';
 import Loading from '@/components/Loading';
-import MapEdit from '@/routes/mapEdit';
+
 import CaseLib from '@/routes/caseLib';
+import Resource from '@/routes/resource';
 import Test from '@/routes/test';
 // const CaseLib = Loadable({
 //   loader: () => import('@/routes/caseLib'),
@@ -44,17 +50,17 @@ export default [
     component: Task
   },
   {
-    id: 'map-edit',
-    title: '地图编辑',
-    icon: <FormOutlined />,
-    url: '/map-edit',
-    component: MapEdit
-  },
-  {
-    id: 'test',
-    title: '测试',
-    icon: <ScheduleOutlined />,
-    url: '/test',
-    component: Test
+    id: 'Resource',
+    title: '资源库',
+    icon: <FolderOutlined />,
+    url: '/resource',
+    component: Resource
   }
+  // {
+  //   id: 'test',
+  //   title: '测试',
+  //   icon: <ScheduleOutlined />,
+  //   url: '/test',
+  //   component: Test
+  // }
 ];

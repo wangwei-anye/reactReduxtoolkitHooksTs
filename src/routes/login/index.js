@@ -10,7 +10,9 @@ const Login = () => {
       username: values.username,
       password: values.password
     });
+
     if (data.code === 200) {
+      localStorage.token = data.data;
       window.location.href = '/case-lib';
     }
   };
@@ -31,6 +33,8 @@ const Login = () => {
           span: 16
         }}
         initialValues={{
+          username: 'root',
+          password: 'root123',
           remember: true
         }}
         onFinish={onFinish}

@@ -1,0 +1,129 @@
+MapFileName: "curves.xodr"
+Triggers:
+  - id: 1
+    position:
+      x: -501
+      y: 400
+    size:
+      width: 20
+      height: 20
+    triggeredId: 0
+  - id: 2
+    position:
+      x: -501
+      y: 450
+    size:
+      width: 20
+      height: 10
+    triggeredId: 0
+  - id: 3
+    position:
+      x: -501
+      y: 530
+    size:
+      width: 20
+      height: 20
+    triggeredId: 0
+Agents:
+  - type: vehicle
+    id: 0
+    actImmediately: false
+    routes:
+      - position:
+          x: -503.9
+          y: 352.42
+        heading: 90
+        velocity: 0
+        accelerate: 10
+        time: 0
+      - position:
+          x: -209.803
+          y: 543.113
+        heading: -30
+        velocity: 0
+        accelerate: 10
+        time: 10
+    triggers:
+  - type: vehicle
+    id: 1
+    actImmediately: false
+    routes:
+      - position:
+          x: -503.9
+          y: 400
+        heading: 90
+        velocity: 0
+        accelerate: 10
+        time: 0
+      - position:
+          x: -500
+          y: 440
+        heading: 90
+        velocity: 0
+        accelerate: 10
+        time: 3
+    triggers:
+      - id: 1
+  - type: vehicle
+    id: 2
+    actImmediately: false
+    routes:
+      - position:
+          x: -500
+          y: 450
+        heading: 90
+        velocity: 0
+        accelerate: 10
+        time: 0
+      - position:
+          x: -501
+          y: 480
+
+        heading: 90
+        velocity: 0
+        accelerate: 10
+        time: 2
+      - position:
+          x: -503.9
+          y: 500
+
+        heading: 90
+        velocity: 0
+        accelerate: 10
+        time: 3
+    triggers:
+      - id: 2
+  - type: vehicle
+    id: 3
+    actImmediately: false
+    routes:
+      - position:
+          x: -500
+          y: 552
+        heading: 90
+        velocity: 0
+        accelerate: 10
+        time: 0
+      - position:
+          x: -486.808
+          y: 609.259
+        heading: 50
+        velocity: 0
+        accelerate: 10
+        time: 20
+      - position:
+          x: -454.386
+          y: 640.159
+        heading: 0
+        velocity: 0
+        accelerate: 10
+        time: 30
+      - position:
+          x: -390.789
+          y: 608.166
+        heading: -30
+        velocity: 0
+        accelerate: 10
+        time: 50
+    triggers:
+      - id: 3

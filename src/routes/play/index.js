@@ -1,28 +1,22 @@
 import React, { PureComponent } from 'react';
-import { Spin } from 'antd';
-
 import { getXVIZConfig } from '@xviz/parser';
 import {
   LogViewer,
   PlaybackControl,
-  StreamSettingsPanel,
   MeterWidget,
   TrafficLightWidget,
   TurnSignalWidget,
   XVIZPanel,
   VIEW_MODE
 } from 'streetscape.gl';
-import { Form } from '@streetscape.gl/monochrome';
-import { PathLayer, GeoJsonLayer } from '@deck.gl/layers';
-import { PathStyleExtension } from '@deck.gl/extensions';
-import { COORDINATE_SYSTEM } from '@deck.gl/core';
-import { APP_SETTINGS, MAPBOX_TOKEN, MAP_STYLE, XVIZ_STYLE, CAR } from './lib/constants';
+import { XVIZ_STYLE, CAR } from './lib/constants';
 import getDataFromXodr from '@/utils/getDataFromXodr';
+import { createMapLayer } from '../mapEdit/lib/layers';
+import { ASSERT_SERVE } from '@/constants';
 import lodash from 'lodash';
 import qs from 'qs';
 import './style.less';
 
-const TIMEFORMAT_SCALE = getXVIZConfig().TIMESTAMP_FORMAT === 'seconds' ? 1000 : 1;
 const exampleLog = require('./lib/log-from-stream').default;
 let clickNum = 0;
 let maxClickNum = 5;
@@ -61,7 +55,14 @@ class Play extends PureComponent {
       loading: true
     });
     let prarms = qs.parse(lodash.split(window.location.search, '?')[1]);
-    const mapData = await getDataFromXodr(prarms.mapUrl);
+    const mapName = await fetch(`${ASSERT_SERVE}/download/replay/${prarms.fileUrl}`)
+      .then((data) => {
+        return data.text();
+      })
+      .then((file_text) => {
+        return JSON.parse(file_text).MapFileName;
+      });
+    const mapData = await getDataFromXodr(mapName);
     console.log('map load');
     mapReady = true;
     if (mapData) {
@@ -96,35 +97,6 @@ class Play extends PureComponent {
     }
   };
 
-  renderLayer = (mapData) => {
-    const temp1 = new PathLayer({
-      coordinateSystem: COORDINATE_SYSTEM.METER_OFFSETS,
-      coordinateOrigin: [0, 0, 0],
-      id: 'path-layer-solid',
-      widthUnits: 'pixels',
-      rounded: true,
-      data: mapData.solidLines,
-      getColor: (d) => [255, 0, 0],
-      getTooltip: (e) => {
-        return '1111111';
-      }
-    });
-    const temp2 = new PathLayer({
-      coordinateSystem: COORDINATE_SYSTEM.METER_OFFSETS,
-      coordinateOrigin: [0, 0, 0],
-      id: 'path-layer-broken',
-      widthUnits: 'pixels',
-      rounded: true,
-      data: mapData.brokenLines,
-      getColor: (d) => [0, 0, 255],
-      getDashArray: [80, 180], //虚线   实线/总长度
-      dashJustified: true,
-      extensions: [new PathStyleExtension({ dash: true, highPrecisionDash: true })]
-    });
-    let layers = [temp1, temp2];
-    return layers;
-  };
-
   _onSettingsChange = (changedSettings) => {
     this.setState({
       settings: { ...this.state.settings, ...changedSettings }
@@ -142,7 +114,7 @@ class Play extends PureComponent {
 
   render() {
     const { log, settings, mapData, loading } = this.state;
-    const layers = this.renderLayer(mapData);
+    const layers = createMapLayer(mapData);
     return (
       <div className='play-wrap'>
         {loading ? (

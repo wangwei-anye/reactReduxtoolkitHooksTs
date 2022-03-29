@@ -50,10 +50,10 @@ const Demo = () => {
   };
 
   const createFileHandle = () => {
-    dispatch(createFile(selectKeys[0]));
+    // dispatch(createFile(selectKeys[0]));
   };
   const deleteFileHandle = () => {
-    dispatch(deleteFile(selectKeys[0]));
+    // dispatch(deleteFile(selectKeys[0]));
   };
   const changeHandle = (e) => {
     setInputValue(e.target.value);

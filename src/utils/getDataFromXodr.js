@@ -2,20 +2,17 @@ import { libjsesmini } from './libjsesmini';
 import { ASSERT_SERVE } from '@/constants';
 export default function (mapUrl) {
   return libjsesmini()().then((Module) => {
-    return fetch(`${ASSERT_SERVE}/${mapUrl}`, {
-      method: 'GET',
-      mode: 'cors'
-    })
+    return fetch(`${ASSERT_SERVE}/download/xodr/${mapUrl}`)
       .then((file_data) => {
         return file_data.text();
       })
       .then((file_text) => {
         Module['FS_createDataFile']('.', 'tempMapFile.xodr', file_text, true, true);
         var isLoad = Module.Position.LoadOpenDrivePath('./tempMapFile.xodr');
-
         var totalLines = {
           solidLines: [],
-          brokenLines: []
+          brokenLines: [],
+          referenceLines: []
         };
 
         var od = Module.Position.GetOpenDrive();
@@ -56,8 +53,6 @@ export default function (mapUrl) {
                       //虚线
                       var brokenLineObj = {
                         name: 'brokenLine' + r + '-' + i + '-' + j + '-' + k + '-' + m + '-' + n,
-                        color: '#ed1c24',
-                        getWidth: (d) => 2, //pixels
                         path: []
                       };
                       var points = curr_osi_rm.GetPoints();
@@ -72,8 +67,6 @@ export default function (mapUrl) {
                       //实线
                       var solidLineObj = {
                         name: 'solidLine' + r + '-' + i + '-' + j + '-' + k + '-' + m + '-' + n,
-                        color: '#ed1c24',
-                        getWidth: (d) => 2,
                         path: []
                       };
 
@@ -97,15 +90,23 @@ export default function (mapUrl) {
               }
 
               /*****reference line*****************/
-              // var curr_osi = lane.GetOSIPoints();
-              // var points = curr_osi_rm.GetPoints();
-              // for (var q = 0; q < curr_osi_rm.GetPoints().size(); q++) {
-              // var point = curr_osi_rm.GetPoint(q);
-              // pathResult.push({
-              //   x: point.x,
-              //   y: point.y
-              // });
-              // }
+
+              var referenceLineObj = {
+                name: 'referenceLine' + r + '-' + i + '-' + j,
+                path: []
+              };
+              var curr_osi = lane.GetOSIPoints();
+              var pathResult = [];
+              var reflen = curr_osi.GetPoints().size();
+              for (var q = 0; q < reflen; q++) {
+                var point = curr_osi.GetPoint(q);
+                pathResult.push([point.x, point.y]);
+              }
+              if (lane.GetId() > 0) {
+                pathResult.reverse();
+              }
+              referenceLineObj.path = pathResult;
+              totalLines.referenceLines.push(referenceLineObj);
               /******reference line****************/
             }
           }
@@ -113,7 +114,7 @@ export default function (mapUrl) {
         return totalLines;
       })
       .catch((e) => {
-        console.log(e);
+        return e;
       });
   });
 }

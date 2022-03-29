@@ -33,9 +33,8 @@ async function buildXvizData(fileUrl) {
   const VEHICLE_WHEEL = '/vehicle/wheel_angle';
   const VEHICLE_AUTONOMOUS = '/vehicle/automy_state';
   const TRACKLETS_TRACKING_POINT = '/tracklets/tracking_point';
-
   const resultData = await axios
-    .get('http://192.168.113.109:8080/download/' + fileUrl)
+    .get(fileUrl)
     .then(function (response) {
       const jsondata = response.data;
       let autoCar = {};
@@ -81,7 +80,7 @@ async function buildXvizData(fileUrl) {
         .type('POLYLINE')
         .coordinate('IDENTITY')
         .streamStyle({
-          stroke_color: '#00FA9A',
+          stroke_color: '#00FF00',
           stroke_width: 0.5 //弹道宽，
         })
 

@@ -33,11 +33,6 @@ export const getMenuData = createAsyncThunk('caseLib/getMenuData', async () => {
 });
 export const getListData = createAsyncThunk('caseLib/getListData', async (query) => {
   const { data } = await getListApi(query);
-  if (data.code === 200) {
-    for (let i = 0; i < data.data.records.length; i++) {
-      data.data.records[i].key = i;
-    }
-  }
   return data;
 });
 

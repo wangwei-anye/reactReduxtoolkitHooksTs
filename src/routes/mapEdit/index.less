@@ -1,26 +1,248 @@
 .map-edit-wrap {
   position: relative;
-  height: calc(100vh - 44px);
+  height: 100%;
   display: flex;
-  .map-box-wrap {
-    flex: 1;
-    .spin-wrap {
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      transform: translate(-50%, -50%);
-    }
-    .map-box {
-      overflow: hidden;
-      height: calc(100vh - 44px);
-      display: block;
+  overflow: hidden;
+  flex-direction: column;
+  .tool-bar {
+    flex: 0 0 36px;
+    border-bottom: 1px solid #ccc;
+    text-align: center;
+    .title {
+      width: 200px;
+      line-height: 36px;
+      float: left;
+      border-right: 1px solid #ccc;
       box-sizing: border-box;
-      position: relative; //地图的超出部分才能隐藏
+    }
+    .btn {
+      width: 100px;
+      line-height: 36px;
+      float: left;
+      border-right: 1px solid #ccc;
+      cursor: pointer;
+    }
+    .magnet-box {
+      border-right: 1px solid #ccc;
+      float: left;
+      width: 100px;
+      cursor: pointer;
+      .magnet {
+        -webkit-font-smoothing: antialiased;
+        border: 0;
+        cursor: pointer;
+        display: inline-flex;
+        outline: 0;
+        position: relative;
+        align-items: center;
+        user-select: none;
+        vertical-align: middle;
+        justify-content: center;
+        text-decoration: none;
+        background-color: transparent;
+        -webkit-appearance: none;
+        -webkit-tap-highlight-color: transparent;
+        color: #5c7582;
+        font-size: 13px;
+        box-sizing: border-box;
+        min-height: 30px;
+        transition: background-color 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms,
+          box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms,
+          border 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
+        font-family: Source Han Sans CN;
+        font-weight: 500;
+        line-height: 1;
+        border-radius: 4px;
+        text-transform: none;
+        height: 33px;
+        margin: 0;
+        padding: 0;
+        min-width: 40px;
+        .btn-label {
+          -webkit-font-smoothing: antialiased;
+          cursor: pointer;
+          user-select: none;
+          -webkit-tap-highlight-color: transparent;
+          color: #5c7582;
+          font-size: 13px;
+          font-family: Source Han Sans CN;
+          font-weight: 500;
+          line-height: 1;
+          text-transform: none;
+          box-sizing: inherit;
+          width: 100%;
+          display: inherit;
+          align-items: inherit;
+          justify-content: inherit;
+        }
+      }
     }
   }
-  .control-wrap {
-    flex: 0 0 100px;
-    background-color: white;
-    border-left: 1px solid #ccc;
+  .content-box {
+    position: relative;
+    height: calc(100% - 36px);
+    flex: 1;
+    display: flex;
+    .left-box {
+      flex: 0 0 200px;
+      display: flex;
+      border-right: 1px solid #ccc;
+      flex-direction: column;
+      .resource-select {
+        flex: 1;
+      }
+      .resource-lib {
+        border-top: 1px solid #ccc;
+        flex: 1;
+      }
+    }
+    .center-box {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      .map-box-wrap {
+        flex: 1;
+        position: relative;
+        .spin-wrap {
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+        }
+        .map-box {
+          .tool-bar {
+            position: absolute;
+            background-color: white;
+            right: 0;
+            top: 0;
+            z-index: 100;
+          }
+          overflow: hidden;
+          height: 100%;
+          display: block;
+          box-sizing: border-box;
+          position: relative; //地图的超出部分才能隐藏
+        }
+      }
+      .resource-list-box {
+        flex: 0 0 150px;
+        border-top: 1px solid #ccc;
+        padding-top: 15px;
+        overflow-y: scroll;
+        .resource-list {
+          display: flex;
+          justify-content: flex-start;
+          flex-wrap: wrap;
+          .resource-list-item {
+            flex: 0 0 90px;
+            margin-left: 15px;
+            height: 110px;
+            border-radius: 5px;
+            text-align: center;
+            cursor: pointer;
+            .resource-list-item-box {
+              width: 90px;
+              height: 90px;
+              position: relative;
+              img {
+                position: absolute;
+                top: 50%;
+                transform: translateY(-50%);
+                display: block;
+                width: 100%;
+              }
+            }
+            .resource-list-item-txt {
+              overflow: hidden;
+              text-overflow: ellipsis;
+              white-space: nowrap;
+              width: 90px;
+            }
+          }
+        }
+      }
+    }
+
+    .right-box {
+      flex: 0 0 300px;
+      background-color: white;
+      border-left: 1px solid #ccc;
+      overflow-y: scroll;
+      .title {
+        border-bottom: 1px solid #ccc;
+        line-height: 48px;
+        height: 48px;
+        padding: 0 20px;
+        .del {
+          float: right;
+          margin-right: 10px;
+        }
+      }
+      .info {
+        border-bottom: 1px solid #ccc;
+        padding: 10px 20px;
+        .txt {
+          width: 80px;
+          display: inline-block;
+        }
+        .val {
+          width: 160px;
+          display: inline-block;
+        }
+        .props {
+          width: 86px;
+          display: inline-block;
+          box-sizing: border-box;
+        }
+      }
+      .router {
+        padding: 10px 20px;
+        border-bottom: 1px solid #ccc;
+        .router-item {
+          border-bottom: 1px solid #ccc;
+          padding: 10px 0;
+          &:first-child {
+            padding-top: 0;
+          }
+          &:last-child {
+            padding-bottom: 0;
+            border-bottom: none;
+          }
+          .seq {
+            .del-btn {
+              cursor: pointer;
+            }
+          }
+          .txt {
+            width: 80px;
+            display: inline-block;
+          }
+          .val {
+            width: 160px;
+            display: inline-block;
+          }
+        }
+      }
+      .triggers {
+        padding: 10px 20px;
+        .swith {
+          margin-left: 20px;
+        }
+        .list {
+          margin-top: 20px;
+          .item {
+            margin-top: 10px;
+            .select {
+              height: 24px;
+              width: 160px;
+            }
+          }
+        }
+        .add {
+          margin-top: 20px;
+          cursor: pointer;
+        }
+      }
+    }
   }
 }

@@ -32,9 +32,13 @@ const Sidebar = () => {
     }
   }
   return (
-    <Menu defaultSelectedKeys={selectedKeys} defaultOpenKeys={[]} mode='inline'>
-      {getMenu(menuConfig)}
-    </Menu>
+    <React.Fragment>
+      {selectedKeys.length > 0 ? (
+        <Menu defaultSelectedKeys={selectedKeys} defaultOpenKeys={[]} mode='inline'>
+          {getMenu(menuConfig)}
+        </Menu>
+      ) : null}
+    </React.Fragment>
   );
 };
 

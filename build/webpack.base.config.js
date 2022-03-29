@@ -104,7 +104,9 @@ const config = {
     new CopyWebpackPlugin({
       patterns: [
         { from: 'public/libjsesmini.wasm', to: 'libjsesmini.wasm' },
-        { from: 'public/libjsesmini.wasm', to: 'js/libjsesmini.wasm' }
+        { from: 'public/libjsesmini.wasm', to: 'js/libjsesmini.wasm' },
+        { from: 'public/libtrajectory.wasm', to: 'libtrajectory.wasm' },
+        { from: 'public/libtrajectory.wasm', to: 'js/libtrajectory.wasm' }
       ]
     })
   ]

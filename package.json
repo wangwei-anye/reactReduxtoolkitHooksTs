@@ -7,6 +7,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "start": "webpack serve --open --config build/webpack.dev.config.js & node nodejs/index.js",
     "nodejs": "node nodejs/index.js",
+    "build:test": "node build/ready && webpack --config build/webpack.test.config.js",
     "build:prod": "node build/ready && webpack --config build/webpack.production.config.js"
   },
   "author": "",
@@ -23,7 +24,10 @@
     "copy-webpack-plugin": "^10.2.4",
     "deck.gl": "^8.6.8",
     "file-loader": "^6.2.0",
+    "fs": "^0.0.1-security",
     "http": "^0.0.1-security",
+    "immer": "^9.0.12",
+    "js-yaml": "^4.1.0",
     "lodash": "^4.17.21",
     "mockjs": "^1.1.0",
     "nebula.gl": "^1.0.2-alpha.1",
@@ -36,7 +40,9 @@
     "streetscape.gl": "^1.0.10",
     "typescript": "^4.5.5",
     "webpack": "^5.44.0",
-    "webpack-cli": "^4.7.2"
+    "webpack-cli": "^4.7.2",
+    "yaml": "^1.10.2",
+    "yamljson": "^1.0.70"
   },
   "devDependencies": {
     "@babel/core": "^7.14.6",
@@ -83,15 +89,19 @@
       "environment": "development",
       "API_BASE": "http://192.168.113.109:9091",
       "WEB_SOCKET": "ws://192.168.112.113:6555",
-      "ASSERT_SERVE": "http://192.168.113.109:8000",
-      "MAPBOX_ACCESS_TOKEN": "pk.eyJ1Ijoid2FuZ3dlaTE4aGFoYSIsImEiOiJja3l4d3FzYWwwM2hlMnFvNzg2MHV5bzVoIn0.vMyMGcGMMIIJZg9UeQJVTw"
+      "ASSERT_SERVE": "http://192.168.113.109:8080"
+    },
+    "test": {
+      "environment": "test",
+      "API_BASE": "http://192.168.113.109:9091",
+      "WEB_SOCKET": "ws://192.168.113.109:6555",
+      "ASSERT_SERVE": "http://192.168.113.109:8080"
     },
     "production": {
       "environment": "production",
-      "API_BASE": "http://192.168.113.109:9091",
-      "WEB_SOCKET": "ws://192.168.112.113:6555",
-      "ASSERT_SERVE": "http://192.168.113.109:8000",
-      "MAPBOX_ACCESS_TOKEN": "pk.eyJ1Ijoid2FuZ3dlaTE4aGFoYSIsImEiOiJja3l4d3FzYWwwM2hlMnFvNzg2MHV5bzVoIn0.vMyMGcGMMIIJZg9UeQJVTw"
+      "API_BASE": "http://172.16.23.215:9091",
+      "WEB_SOCKET": "ws://172.16.23.215:6555",
+      "ASSERT_SERVE": "http://172.16.23.215:8080"
     }
   }
 }

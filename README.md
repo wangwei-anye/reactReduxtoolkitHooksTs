@@ -2,6 +2,15 @@
 
 react + redux-toolkit + hooks + typescript
 
+## 项目运行
+
+1、本地开发，启动项目
+yarn satrt  
+2、发布打包项目 到 dist 文件夹
+yarn build:prod
+3、开启 node.js 服务
+yarn nodejs
+
 ## 注意项
 
 1、yarn 必须降级到 1.10.0 才能安装 streetscape.gl
@@ -22,8 +31,7 @@ global.Buffer = global.Buffer || require('buffer').Buffer;
 webpack 配置
 new CopyWebpackPlugin({
 patterns: [
-{ from: 'public/libjsesmini.wasm', to: 'libjsesmini.wasm' },
-{ from: 'public/e6mini.xodr', to: 'e6mini.xodr' }
+{ from: 'public/libjsesmini.wasm', to: 'libjsesmini.wasm' }
 ]
 })
 

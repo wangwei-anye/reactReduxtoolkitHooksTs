@@ -14,6 +14,10 @@ export function getListApi(query) {
   return request(`${API_BASE}/cases/getListWithPage?${querystring}`);
 }
 
+export function getAlgorithm() {
+  return request(`${API_BASE}/algorithmicLogic/getAllAlgorithmicLogicList`);
+}
+
 export function createCaseApi(query) {
   const options = {
     method: 'POST',

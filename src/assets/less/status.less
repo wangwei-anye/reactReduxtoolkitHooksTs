@@ -1,0 +1,26 @@
+@charset "utf-8";
+// 各种状态less
+.u-status {
+  display: inline-block;
+  &::before {
+    content: '';
+    display: inline-block;
+    width: 6px;
+    height: 6px;
+    border-radius: 100%;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  // 完成
+  &.status-complete::before {
+    background-color: #52c41a;
+  }
+  // 错误
+  &.status-error::before {
+    background-color: #f5222d;
+  }
+  // 部分完成
+  &.status-part-complete::before {
+    background-color: #faad14;
+  }
+}

@@ -1,0 +1,47 @@
+.resource-wrap {
+  display: flex;
+  height: 100vh;
+  .resource-lib {
+    flex: 0 0 200px;
+    height: 100vh;
+    background-color: #f0f2f5;
+    border-right: 1px solid #ccc;
+  }
+  .resource-list-box {
+    flex: 1;
+    border-top: 1px solid #ccc;
+    padding-top: 15px;
+    overflow-y: scroll;
+    .resource-list {
+      display: flex;
+      justify-content: flex-start;
+      flex-wrap: wrap;
+      .resource-list-item {
+        flex: 0 0 90px;
+        margin-left: 15px;
+        height: 110px;
+        border-radius: 5px;
+        text-align: center;
+        cursor: pointer;
+        .resource-list-item-box {
+          width: 90px;
+          height: 90px;
+          position: relative;
+          img {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            display: block;
+            width: 100%;
+          }
+        }
+        .resource-list-item-txt {
+          overflow: hidden;
+          text-overflow: ellipsis;
+          white-space: nowrap;
+          width: 90px;
+        }
+      }
+    }
+  }
+}

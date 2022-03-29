@@ -22,7 +22,7 @@ export const libjsesmini = () => {
     };
     var ENVIRONMENT_IS_WEB = true;
     var ENVIRONMENT_IS_WORKER = false;
-    var scriptDirectory = '/dist';
+    var scriptDirectory = '';
     function locateFile(path) {
       if (Module['locateFile']) {
         return Module['locateFile'](path, scriptDirectory);
@@ -498,10 +498,10 @@ export const libjsesmini = () => {
       function receiveInstance(instance, module) {
         var exports = instance.exports;
         Module['asm'] = exports;
-        wasmMemory = Module['asm']['M'];
+        wasmMemory = Module['asm']['N'];
         updateGlobalBufferAndViews(wasmMemory.buffer);
-        wasmTable = Module['asm']['O'];
-        addOnInit(Module['asm']['N']);
+        wasmTable = Module['asm']['P'];
+        addOnInit(Module['asm']['O']);
         removeRunDependency('wasm-instantiate');
       }
       addRunDependency('wasm-instantiate');
@@ -4463,6 +4463,34 @@ export const libjsesmini = () => {
         destructorFunction: null
       });
     }
+    function __embind_register_function(
+      name,
+      argCount,
+      rawArgTypesAddr,
+      signature,
+      rawInvoker,
+      fn
+    ) {
+      var argTypes = heap32VectorToArray(argCount, rawArgTypesAddr);
+      name = readLatin1String(name);
+      rawInvoker = embind__requireFunction(signature, rawInvoker);
+      exposePublicSymbol(
+        name,
+        function () {
+          throwUnboundTypeError('Cannot call ' + name + ' due to unbound types', argTypes);
+        },
+        argCount - 1
+      );
+      whenDependentTypesAreResolved([], argTypes, function (argTypes) {
+        var invokerArgsArray = [argTypes[0], null].concat(argTypes.slice(1));
+        replacePublicSymbol(
+          name,
+          craftInvokerFunction(name, invokerArgsArray, null, rawInvoker, fn),
+          argCount - 1
+        );
+        return [];
+      });
+    }
     function integerReadValueFromPointer(name, shift, signed) {
       switch (shift) {
         case 0:
@@ -5296,35 +5324,36 @@ export const libjsesmini = () => {
       h: ___cxa_allocate_exception,
       g: ___cxa_throw,
       p: ___syscall_fcntl64,
-      D: ___syscall_ioctl,
-      E: ___syscall_open,
+      E: ___syscall_ioctl,
+      F: ___syscall_open,
       u: __embind_register_bigint,
-      H: __embind_register_bool,
+      I: __embind_register_bool,
       e: __embind_register_class,
-      m: __embind_register_class_class_function,
+      s: __embind_register_class_class_function,
       k: __embind_register_class_constructor,
       a: __embind_register_class_function,
       i: __embind_register_class_property,
-      G: __embind_register_emval,
-      s: __embind_register_enum,
+      H: __embind_register_emval,
+      m: __embind_register_enum,
       d: __embind_register_enum_value,
       r: __embind_register_float,
+      B: __embind_register_function,
       f: __embind_register_integer,
       c: __embind_register_memory_view,
       q: __embind_register_std_string,
       l: __embind_register_std_wstring,
-      I: __embind_register_void,
-      J: __emval_decref,
-      K: __emval_incref,
-      L: __emval_take_value,
+      J: __embind_register_void,
+      K: __emval_decref,
+      L: __emval_incref,
+      M: __emval_take_value,
       j: _abort,
       A: _clock_gettime,
-      F: _emscripten_memcpy_big,
-      B: _emscripten_resize_heap,
+      G: _emscripten_memcpy_big,
+      C: _emscripten_resize_heap,
       y: _environ_get,
       z: _environ_sizes_get,
       n: _fd_close,
-      C: _fd_read,
+      D: _fd_read,
       t: _fd_seek,
       o: _fd_write,
       w: _getentropy,
@@ -5333,19 +5362,19 @@ export const libjsesmini = () => {
     };
     var asm = createWasm();
     var ___wasm_call_ctors = (Module['___wasm_call_ctors'] = function () {
-      return (___wasm_call_ctors = Module['___wasm_call_ctors'] = Module['asm']['N']).apply(
+      return (___wasm_call_ctors = Module['___wasm_call_ctors'] = Module['asm']['O']).apply(
         null,
         arguments
       );
     });
     var _malloc = (Module['_malloc'] = function () {
-      return (_malloc = Module['_malloc'] = Module['asm']['P']).apply(null, arguments);
+      return (_malloc = Module['_malloc'] = Module['asm']['Q']).apply(null, arguments);
     });
     var _free = (Module['_free'] = function () {
-      return (_free = Module['_free'] = Module['asm']['Q']).apply(null, arguments);
+      return (_free = Module['_free'] = Module['asm']['R']).apply(null, arguments);
     });
     var ___getTypeName = (Module['___getTypeName'] = function () {
-      return (___getTypeName = Module['___getTypeName'] = Module['asm']['R']).apply(
+      return (___getTypeName = Module['___getTypeName'] = Module['asm']['S']).apply(
         null,
         arguments
       );
@@ -5356,46 +5385,46 @@ export const libjsesmini = () => {
       return (___embind_register_native_and_builtin_types = Module[
         '___embind_register_native_and_builtin_types'
       ] =
-        Module['asm']['S']).apply(null, arguments);
+        Module['asm']['T']).apply(null, arguments);
     });
     var ___errno_location = (Module['___errno_location'] = function () {
-      return (___errno_location = Module['___errno_location'] = Module['asm']['T']).apply(
+      return (___errno_location = Module['___errno_location'] = Module['asm']['U']).apply(
         null,
         arguments
       );
     });
     var stackSave = (Module['stackSave'] = function () {
-      return (stackSave = Module['stackSave'] = Module['asm']['U']).apply(null, arguments);
+      return (stackSave = Module['stackSave'] = Module['asm']['V']).apply(null, arguments);
     });
     var stackRestore = (Module['stackRestore'] = function () {
-      return (stackRestore = Module['stackRestore'] = Module['asm']['V']).apply(null, arguments);
+      return (stackRestore = Module['stackRestore'] = Module['asm']['W']).apply(null, arguments);
     });
     var stackAlloc = (Module['stackAlloc'] = function () {
-      return (stackAlloc = Module['stackAlloc'] = Module['asm']['W']).apply(null, arguments);
+      return (stackAlloc = Module['stackAlloc'] = Module['asm']['X']).apply(null, arguments);
     });
     var dynCall_jiji = (Module['dynCall_jiji'] = function () {
-      return (dynCall_jiji = Module['dynCall_jiji'] = Module['asm']['X']).apply(null, arguments);
+      return (dynCall_jiji = Module['dynCall_jiji'] = Module['asm']['Y']).apply(null, arguments);
     });
     var dynCall_viijii = (Module['dynCall_viijii'] = function () {
-      return (dynCall_viijii = Module['dynCall_viijii'] = Module['asm']['Y']).apply(
+      return (dynCall_viijii = Module['dynCall_viijii'] = Module['asm']['Z']).apply(
         null,
         arguments
       );
     });
     var dynCall_iiiiij = (Module['dynCall_iiiiij'] = function () {
-      return (dynCall_iiiiij = Module['dynCall_iiiiij'] = Module['asm']['Z']).apply(
+      return (dynCall_iiiiij = Module['dynCall_iiiiij'] = Module['asm']['_']).apply(
         null,
         arguments
       );
     });
     var dynCall_iiiiijj = (Module['dynCall_iiiiijj'] = function () {
-      return (dynCall_iiiiijj = Module['dynCall_iiiiijj'] = Module['asm']['_']).apply(
+      return (dynCall_iiiiijj = Module['dynCall_iiiiijj'] = Module['asm']['$']).apply(
         null,
         arguments
       );
     });
     var dynCall_iiiiiijj = (Module['dynCall_iiiiiijj'] = function () {
-      return (dynCall_iiiiiijj = Module['dynCall_iiiiiijj'] = Module['asm']['$']).apply(
+      return (dynCall_iiiiiijj = Module['dynCall_iiiiiijj'] = Module['asm']['aa']).apply(
         null,
         arguments
       );
@@ -5453,7 +5482,6 @@ export const libjsesmini = () => {
       }
     }
     run();
-
     return libjsesmini.ready;
   };
 };

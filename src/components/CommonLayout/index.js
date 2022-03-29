@@ -1,7 +1,7 @@
 import { Layout } from 'antd';
 import React from 'react';
 import Sidebar from './Sidebar';
-import { LogoutOutlined } from '@ant-design/icons';
+import { LogoutOutlined, QuestionCircleOutlined } from '@ant-design/icons';
 import { Tooltip } from 'antd';
 import '@/index.less';
 
@@ -16,6 +16,9 @@ class CommonLayout extends React.PureComponent {
   logout = () => {
     window.location.href = '/login';
   };
+  gotoDoc = () => {
+    window.open(`/doc`);
+  };
 
   render() {
     const { children } = this.props;
@@ -25,6 +28,11 @@ class CommonLayout extends React.PureComponent {
         <React.Fragment>
           <Header className='layouit-header'>
             国汽智控云端自动驾驶仿真测试平台
+            <div className='doc-link'>
+              <Tooltip placement='bottom' title={'版本更新'} onClick={this.gotoDoc}>
+                <QuestionCircleOutlined></QuestionCircleOutlined>
+              </Tooltip>
+            </div>
             <div className='userName'>用户名</div>
             <div className='logout' onClick={this.logout}>
               <Tooltip placement='bottom' title={'登出'}>
