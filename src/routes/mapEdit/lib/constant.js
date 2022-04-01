@@ -10,14 +10,19 @@ import Icon_map9 from '../../../assets/images/maps/map9.png';
 import Icon_map10 from '../../../assets/images/maps/map10.png';
 import Icon_map11 from '../../../assets/images/maps/map11.png';
 import Icon_main_car from '../../../assets/images/vehicle.png';
+import Icon_main_car_rotate from '../../../assets/images/vehicle_rotate.png';
 import Icon_flag from '../../../assets/images/flag.png';
 import Icon_element_car from '../../../assets/images/obstacle_car.png';
+import Icon_element_car_rotate from '../../../assets/images/obstacle_car_rotate.png';
 import Icon_element_people from '../../../assets/images/obstacle_people.png';
 import Icon_element_people2 from '../../../assets/images/obstacle_people2.png';
+import Icon_element_people2_rotate from '../../../assets/images/obstacle_people2_rotate.png';
 import Icon_element_animal from '../../../assets/images/obstacle_animal.png';
 import Icon_element_animal2 from '../../../assets/images/obstacle_animal2.png';
+import Icon_element_animal2_rotate from '../../../assets/images/obstacle_animal2_rotate.png';
 import Icon_element_bicycle from '../../../assets/images/obstacle_bicycle.png';
 import Icon_element_bicycle2 from '../../../assets/images/obstacle_bicycle2.png';
+import Icon_element_bicycle2_rotate from '../../../assets/images/obstacle_bicycle2_rotate.png';
 import Icon_element_trigger from '../../../assets/images/trigger.png';
 //资源类型
 export const RESOURCE_TYPE = {
@@ -28,7 +33,8 @@ export const RESOURCE_TYPE = {
   ELEMENT_PEOPLE: 'resource_element_people',
   ELEMENT_ANIMAL: 'resource_element_animal',
   ELEMENT_BICYCLE: 'resource_element_bicycle',
-  TRIGGERS: 'triggers'
+  TRIGGERS: 'triggers',
+  ROTATE_POINT: 'rotate_point' //旋转点
 };
 //加载到地图上的资源
 export const Resource_load_tree = [
@@ -74,12 +80,6 @@ export const Resource_list_map = [
     key: 'map1',
     url: 'multi_intersections.xodr',
     icon: Icon_map1
-  },
-  {
-    title: 'bao_neng0',
-    key: 'map2',
-    url: 'bao_neng0.xodr',
-    icon: Icon_map2
   },
   {
     title: 'straight_500m',
@@ -141,16 +141,19 @@ export const Resource_list_main_car = [
     title: '主车',
     id: 0,
     type: RESOURCE_TYPE.MAIN_CAR,
-    length: 4.8,
+    length: 2.5,
     width: 1.8,
     height: 1.5,
     icon: Icon_main_car,
     icon2: Icon_flag,
+    icon_select: Icon_main_car_rotate,
     routes: [],
     actImmediately: true,
     triggers: [],
-    w: 200, //地图上显示的大小
-    h: 100
+    w: 377, //地图上显示的比例大小
+    h: 180,
+    selectW: 677, //地图上显示的比例大小
+    selectH: 180
   }
 ];
 export const Resource_list_element_car = [
@@ -158,16 +161,19 @@ export const Resource_list_element_car = [
     title: '小轿车',
     id: 1,
     type: RESOURCE_TYPE.ELEMENT_CAR,
-    length: 4.8,
+    length: 2.5, //图片占据地图大小
     width: 1.8,
     height: 1.5,
     icon: Icon_element_car,
     icon2: Icon_element_car,
+    icon_select: Icon_element_car_rotate,
     routes: [],
     actImmediately: false,
     triggers: [],
-    w: 200,
-    h: 100
+    w: 377, //图片显示大小  图片真实宽高
+    h: 180,
+    selectW: 677, //地图上显示的比例大小  图片真实宽高
+    selectH: 180
   }
 ];
 export const Resource_list_element_people = [
@@ -180,11 +186,14 @@ export const Resource_list_element_people = [
     height: 1.7,
     icon: Icon_element_people,
     icon2: Icon_element_people2,
+    icon_select: Icon_element_people2_rotate,
     routes: [],
     actImmediately: false,
     triggers: [],
-    w: 100,
-    h: 100
+    w: 50,
+    h: 50,
+    selectW: 350, //地图上显示的比例大小
+    selectH: 70
   }
 ];
 
@@ -198,11 +207,14 @@ export const Resource_list_element_animal = [
     height: 1,
     icon: Icon_element_animal,
     icon2: Icon_element_animal2,
+    icon_select: Icon_element_animal2_rotate,
     routes: [],
     actImmediately: false,
     triggers: [],
-    w: 100,
-    h: 100
+    w: 50,
+    h: 50,
+    selectW: 350, //地图上显示的比例大小
+    selectH: 70
   }
 ];
 
@@ -216,11 +228,14 @@ export const Resource_list_element_bicycle = [
     height: 2,
     icon: Icon_element_bicycle,
     icon2: Icon_element_bicycle2,
+    icon_select: Icon_element_bicycle2_rotate,
     routes: [],
     actImmediately: false,
     triggers: [],
-    w: 200,
-    h: 100
+    w: 100,
+    h: 50,
+    selectW: 400, //地图上显示的比例大小
+    selectH: 70
   }
 ];
 export const Resource_list_triggers = [
@@ -230,7 +245,7 @@ export const Resource_list_triggers = [
     type: RESOURCE_TYPE.TRIGGERS,
     icon: Icon_element_trigger,
     position: { x: -501, y: 400 },
-    size: { width: 20, height: 20 },
+    size: { width: 8, height: 8 },
     pos: [],
     triggeredId: []
   }

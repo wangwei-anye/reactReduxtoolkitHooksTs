@@ -1,9 +1,21 @@
 import { GPS } from './GPS';
 import getTrajectory from '@/utils/getTrajectory';
+import { RESOURCE_TYPE } from './constant';
 
 //获取图片缩放大小
-export const getIconScale = (zoom) => {
-  return (zoom - 10) * 0.8;
+export const getIconScale = (d) => {
+  if (!d) {
+    return 1;
+  }
+  if (d.type === RESOURCE_TYPE.MAIN_CAR || d.type === RESOURCE_TYPE.ELEMENT_CAR) {
+    return d.length * 0.9;
+  }
+  if (d.type === RESOURCE_TYPE.ELEMENT_BICYCLE) {
+    return d.length * 1.8;
+  } else {
+    return d.length * 4;
+  }
+  return 1;
 };
 
 //经纬度转换成角度
@@ -70,23 +82,29 @@ export const formatIconDataFromFeatures = (featuresCollection) => {
   return result;
 };
 //编辑数据 转换成 贝塞尔点
-export const getBezierPointFromFeatures = async (elementInfo) => {
+const savetrajectotyArr = {}; //保存计算结果
+export const getBezierPointFromFeatures = async (elementInfo, currentElementId) => {
   const result = [];
   for (let i = 0; i < elementInfo.length; i++) {
-    const pointsArr = [];
-    for (let j = 0; j < elementInfo[i].routes.length; j++) {
-      const meters = GPS.mercator_encrypt(
-        elementInfo[i].routes[j].position.x,
-        elementInfo[i].routes[j].position.y
-      );
-      pointsArr.push({
-        x: meters.x,
-        y: meters.y,
-        heading: elementInfo[i].routes[j].heading
-      });
+    if (!savetrajectotyArr[elementInfo[i].id] || currentElementId === elementInfo[i].id) {
+      const pointsArr = [];
+      for (let j = 0; j < elementInfo[i].routes.length; j++) {
+        const meters = GPS.mercator_encrypt(
+          elementInfo[i].routes[j].position.x,
+          elementInfo[i].routes[j].position.y
+        );
+        pointsArr.push({
+          x: meters.x,
+          y: meters.y,
+          heading: elementInfo[i].routes[j].heading
+        });
+      }
+      const trajectotyArr = await getTrajectory(pointsArr);
+      savetrajectotyArr[elementInfo[i].id] = trajectotyArr;
+      result.push(trajectotyArr);
+    } else {
+      result.push(savetrajectotyArr[elementInfo[i].id]);
     }
-    const trajectotyArr = await getTrajectory(pointsArr);
-    result.push(trajectotyArr);
   }
   return result;
 };
@@ -113,10 +131,14 @@ export const formatIconDataFromInfo = (carData) => {
       type: carData.type,
       coordinates: [carData.routes[i].position.x, carData.routes[i].position.y],
       angle: carData.routes[i].heading,
-      icon: i === 0 ? carData.icon : carData.icon2,
+      icon:
+        i === 0 ? (carData.routes[i].selected ? carData.icon_select : carData.icon) : carData.icon2,
       anchorY: i === 0 ? carData.h / 2 : carData.h - 9, // 原点偏移量  h 一半
-      w: i === 0 ? carData.w : carData.h,
-      h: carData.h
+      w: i === 0 ? (carData.routes[i].selected ? carData.selectW : carData.w) : carData.h,
+      h: carData.routes[i].selected ? carData.selectH : carData.h,
+      length: carData.length,
+      width: carData.width,
+      index: carData.routes[i].index
     });
   }
   return result;
@@ -131,10 +153,13 @@ export const formatIconDataFromElementInfo = (elementData) => {
         type: elementData[i].type,
         coordinates: [elementData[i].routes[j].position.x, elementData[i].routes[j].position.y],
         angle: elementData[i].routes[j].heading,
-        icon: elementData[i].icon2,
+        icon: elementData[i].routes[j].selected ? elementData[i].icon_select : elementData[i].icon2,
         anchorY: elementData[i].h / 2, // 原点偏移量
-        w: elementData[i].w,
-        h: elementData[i].h
+        w: elementData[i].routes[j].selected ? elementData[i].selectW : elementData[i].w,
+        h: elementData[i].routes[j].selected ? elementData[i].selectH : elementData[i].h,
+        length: elementData[i].length,
+        width: elementData[i].width,
+        index: elementData[i].routes[j].index
       });
     }
   }
@@ -218,9 +243,9 @@ export const calcMinDistancePoint = (point, referenceLines) => {
   // 到 车道的直线距离
   const minToRoad = getLenByTwoPoint(startPoint, [jiaodian.x, jiaodian.y]);
   if (minToRoad < 3) {
-    return [[Lonlat.lon, Lonlat.lat], angle];
+    return [[Lonlat.lon, Lonlat.lat], angle, true];
   }
-  return [point, angle];
+  return [point, angle, false];
 };
 
 function getFocusPoint([x1, y1], [x2, y2], [x3, y3]) {
@@ -245,7 +270,7 @@ export const getAngleByTwoPoint = (point1, point2) => {
     return 0;
   }
   const radian = Math.atan2(point2[1] - point1[1], point2[0] - point1[0]); // 返回来的是弧度
-  const angle = parseFloat((180 / Math.PI) * radian); // 根据弧度计算角度
+  const angle = parseInt((180 / Math.PI) * radian); // 根据弧度计算角度
   return angle;
 };
 
@@ -257,4 +282,35 @@ export const getLenByTwoPoint = (point1, point2) => {
   const a = Math.abs(point1[0] - point2[0]);
   const b = Math.abs(point1[1] - point2[1]);
   return Math.sqrt(a * a + b * b);
+};
+
+//生成旋转用的虚拟坐标
+export const createRotatePoint = ([x, y], heading, type) => {
+  let len;
+  if (type == RESOURCE_TYPE.MAIN_CAR || type === RESOURCE_TYPE.ELEMENT_CAR) {
+    len = 4;
+  } else if (type == RESOURCE_TYPE.ELEMENT_BICYCLE) {
+    len = 4.3;
+  } else {
+    len = 4;
+  }
+  const meters = GPS.mercator_encrypt(x, y);
+  const _heading = heading % 360;
+  let result = [];
+  if (_heading === 0) {
+    result = [meters.x + len, meters.y];
+  } else if (_heading === 90 || _heading === -270) {
+    result = [meters.x, meters.y + len];
+  } else if (_heading === 180 || _heading === -180) {
+    result = [meters.x - len, meters.y];
+  } else if (_heading === 270 || _heading === -90) {
+    result = [meters.x, meters.y - len];
+  } else {
+    const radian = ((2 * Math.PI) / 360) * _heading;
+    const _y = Math.sin(radian) * len;
+    const _x = Math.cos(radian) * len;
+    result = [meters.x + _x, meters.y + _y];
+  }
+  const pos = GPS.mercator_decrypt(result[0], result[1]);
+  return [pos.lon, pos.lat];
 };

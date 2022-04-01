@@ -13,6 +13,9 @@ const Login = () => {
 
     if (data.code === 200) {
       localStorage.token = data.data;
+      localStorage.userInfo = JSON.stringify({
+        name: values.username
+      });
       window.location.href = '/case-lib';
     }
   };

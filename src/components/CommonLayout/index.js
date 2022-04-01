@@ -23,6 +23,11 @@ class CommonLayout extends React.PureComponent {
   render() {
     const { children } = this.props;
     const { collapsed } = this.state;
+
+    let userInfo = {};
+    if (localStorage.userInfo) {
+      userInfo = JSON.parse(localStorage.userInfo);
+    }
     return (
       <Layout className='common-layout'>
         <React.Fragment>
@@ -33,7 +38,7 @@ class CommonLayout extends React.PureComponent {
                 <QuestionCircleOutlined></QuestionCircleOutlined>
               </Tooltip>
             </div>
-            <div className='userName'>用户名</div>
+            <div className='userName'>{userInfo && userInfo.name ? userInfo.name : 'admin'}</div>
             <div className='logout' onClick={this.logout}>
               <Tooltip placement='bottom' title={'登出'}>
                 <LogoutOutlined></LogoutOutlined>

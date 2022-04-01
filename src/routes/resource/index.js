@@ -8,7 +8,8 @@ import {
   Resource_list_element_car,
   Resource_list_element_people,
   Resource_list_element_bicycle,
-  Resource_list_triggers
+  Resource_list_triggers,
+  Resource_list_element_animal
 } from '../mapEdit/lib/constant';
 import './index.less';
 
@@ -38,6 +39,8 @@ const Resource = () => {
       Resource_list = Resource_list_element_bicycle;
     } else if (resourceLibType === RESOURCE_TYPE.TRIGGERS) {
       Resource_list = Resource_list_triggers;
+    } else if (resourceLibType === RESOURCE_TYPE.ELEMENT_ANIMAL) {
+      Resource_list = Resource_list_element_animal;
     }
     return Resource_list.map((item, index) => {
       return (

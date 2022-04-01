@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { Tree, Tooltip, Button } from 'antd';
 import { FileAddOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useSelector, useDispatch } from 'react-redux';
@@ -17,12 +17,13 @@ import { DEFAULT_PAGE_SIZE } from '@/constants';
 import './index.less';
 const { DirectoryTree } = Tree;
 
-const Demo = () => {
+const CaseLib = () => {
   const [selectKeys, setSelectKeys] = useState([]);
   const [inputValue, setInputValue] = useState('');
   const dispatch = useDispatch();
   const { treeData } = useSelector(selectCaseLib);
   const { listData } = useSelector(selectCaseLib);
+  const childRef = useRef();
 
   useEffect(() => {
     dispatch(getMenuData());
@@ -61,6 +62,7 @@ const Demo = () => {
   const onSelect = (keys, info) => {
     setSelectKeys(keys);
     if (keys.length > 0) {
+      childRef.current.setCurrent(1);
       queryList(keys[0]);
     }
   };
@@ -122,6 +124,7 @@ const Demo = () => {
           {treeData.length > 0 ? (
             <DirectoryTree
               defaultExpandAll
+              defaultSelectedKeys={[treeData[0].key]}
               onSelect={onSelect}
               treeData={renderDataHandle(jsonTreeData)}
             />
@@ -132,6 +135,7 @@ const Demo = () => {
         <CaseBox
           listData={listData}
           menuId={selectKeys}
+          ref={childRef}
           pageIndexChange={pageIndexChange}
         ></CaseBox>
       </div>
@@ -139,4 +143,4 @@ const Demo = () => {
   );
 };
 
-export default Demo;
+export default CaseLib;

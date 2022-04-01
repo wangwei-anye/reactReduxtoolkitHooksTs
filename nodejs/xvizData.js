@@ -148,10 +148,19 @@ async function buildXvizData(fileUrl) {
           if (obstacleCarArr[k].pos[index]) {
             const posX = obstacleCarArr[k].pos[index].x;
             const posY = obstacleCarArr[k].pos[index].y;
-            const polygonPos = calculatePlygon(posX, posY, obstacleCarArr[k].pos[index].radian);
+            const polygonPos = calculatePlygon(
+              posX,
+              posY,
+              obstacleCarArr[k].pos[index].radian,
+              obstacleCarArr[k].length,
+              obstacleCarArr[k].width
+            );
             xvizBuilder
               .primitive('/object/shape')
               .polygon(polygonPos)
+              .style({
+                height: obstacleCarArr[k].height
+              })
               .id('polygon-' + k);
           }
         }

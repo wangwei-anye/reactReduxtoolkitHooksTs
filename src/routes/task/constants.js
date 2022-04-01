@@ -14,5 +14,6 @@ export const STATE_MAP = {
   5: '正常结束', //pass
   6: '超时', //error
   7: '发生交通事故', //error
-  8: '排队中' //error
+  8: '排队中', //error
+  9: '已完成' //全部完成
 };

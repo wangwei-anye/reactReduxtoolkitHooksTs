@@ -26,7 +26,10 @@ import {
   createRectangle,
   calcRectangle,
   calcMinDistancePoint,
-  getTotalLenByPoint
+  getTotalLenByPoint,
+  createRotatePoint,
+  getAngleByTwoPoint,
+  getRotateScaleLen
 } from './lib/utils';
 import getTrajectory from '@/utils/getTrajectory';
 import { saveApi } from '@/services/mapEdit';
@@ -50,6 +53,7 @@ const translateAndScaleMode = new CompositeMode([
   new ScaleMode(),
   new ExtrudeMode()
 ]);
+const translateAndRotateMode = new CompositeMode([new TranslateMode(), new RotateMode()]);
 let drag_type = ''; //拖动的 资源类型
 let isDropEnd = false; //拖动到map 的flag
 let createElementId = 1; //元素ID ，生成一个新元素 就加1
@@ -57,17 +61,30 @@ let lastFileLen = 0; //上一次的资源加载树的 文件数量，只有数�
 let disabledSaveBtn = false;
 const MapEdit = () => {
   //可编辑的 Feature   Indexes
-  const [selectedFeatureIndexes, setSelectedFeatureIndexes] = useState([]);
+  const [selectedFeatureIndexes, setSelectedFeatureIndexes] = useState([0]);
   const [featuresCollection, setFeaturesCollection] = useState({
     type: 'FeatureCollection',
-    features: []
+    features: [
+      {
+        type: 'Feature',
+        properties: {
+          elementId: '',
+          index: '',
+          type: RESOURCE_TYPE.ROTATE_POINT
+        },
+        geometry: {
+          type: 'Point',
+          coordinates: [0, 0]
+        }
+      }
+    ]
   });
   // 视图模式  和  视图下拉框值
   const [mode, setMode] = useState(() => ViewMode);
   const [modeValue, setModeValue] = useState('view');
 
   // 地图
-  const [mapZoom, setMapZoom] = useState(15);
+  const [mapZoom, setMapZoom] = useState(18);
   const [viewState, useViewState] = useState({});
   const [loading, setLoading] = useState(false);
   const [mapData, setMapData] = useState({ solidLines: [], brokenLines: [], referenceLines: [] });
@@ -77,6 +94,8 @@ const MapEdit = () => {
   const [resourceOperateType, setResourceOperateType] = useState(RESOURCE_TYPE.MAP);
   //当前操作的资源ID
   const [currentElementId, setCurrentElementId] = useState();
+  //当前操作的资源Index
+  const [currentElementIndex, setCurrentElementIndex] = useState();
   //让 加载的资源树 重新渲染   defaultExpandAll 才有效
   const [renderFlag, setRenderFlag] = useState(true);
   //加载的资源树 key
@@ -113,7 +132,9 @@ const MapEdit = () => {
       if (featuresCollection.features[i].properties.type) {
         if (
           featuresCollection.features[i].properties.type !== RESOURCE_TYPE.TRIGGERS &&
-          featuresCollection.features[i].properties.type !== RESOURCE_TYPE.MAIN_CAR
+          featuresCollection.features[i].properties.type !== RESOURCE_TYPE.MAIN_CAR &&
+          featuresCollection.features[i].properties.type !== RESOURCE_TYPE.ROTATE_POINT &&
+          featuresCollection.features[i].properties.elementId === currentElementId //只修改当前选中的对象
         ) {
           if (tempElementInfo[featuresCollection.features[i].properties.elementId]) {
             tempElementInfo[featuresCollection.features[i].properties.elementId].push({
@@ -173,7 +194,7 @@ const MapEdit = () => {
           ]);
           const totalLen = getTotalLenByPoint(trajectotyArr);
           tempRouterArr[k].totalLen = totalLen;
-          if (tempRouterArr[k].changeProp === 'velocity' && tempRouterArr[k].velocity > 0) {
+          if (tempRouterArr[k].changeProp === 'velocity') {
             const _vt = tempRouterArr[k].velocity;
             const _v0 = tempRouterArr[k - 1].velocity;
             const _s = tempRouterArr[k].totalLen;
@@ -192,6 +213,7 @@ const MapEdit = () => {
         }
       }
     }
+
     setElementInfo((prevState) => {
       for (let i = 0; i < prevState.length; i++) {
         if (tempElementInfo[prevState[i].id]) {
@@ -203,14 +225,12 @@ const MapEdit = () => {
               prevState[i].routes[m].accelerate = tempArr[m].accelerate;
             }
           }
-        } else {
-          prevState[i].routes = [];
         }
       }
       return [...prevState];
     });
   };
-
+  //根据FeatureCollection 计算 mainCarInfo、elementInfo
   const getDataFromCollection = () => {
     console.log('------------------featuresCollection---------------------');
     console.log(featuresCollection);
@@ -226,10 +246,12 @@ const MapEdit = () => {
               x: featuresCollection.features[i].geometry.coordinates[0],
               y: featuresCollection.features[i].geometry.coordinates[1]
             },
+            index: featuresCollection.features[i].properties.index || 0,
             heading: featuresCollection.features[i].properties.heading || 0,
             velocity: featuresCollection.features[i].properties.velocity || 0,
             accelerate: featuresCollection.features[i].properties.accelerate || 0,
-            time: featuresCollection.features[i].properties.time || 0
+            time: featuresCollection.features[i].properties.time || 0,
+            selected: featuresCollection.features[i].properties.selected || false
           });
         } else if (featuresCollection.features[i].properties.type === RESOURCE_TYPE.TRIGGERS) {
           const obj = calcRectangle(featuresCollection.features[i].geometry.coordinates);
@@ -249,7 +271,10 @@ const MapEdit = () => {
               triggeredId: tempTriggeredId
             })
           );
-        } else {
+        } else if (
+          featuresCollection.features[i].properties.type !== RESOURCE_TYPE.ROTATE_POINT &&
+          featuresCollection.features[i].properties.elementId === currentElementId
+        ) {
           if (tempElementInfo[featuresCollection.features[i].properties.elementId]) {
             tempElementInfo[featuresCollection.features[i].properties.elementId].push({
               position: {
@@ -260,6 +285,8 @@ const MapEdit = () => {
               velocity: featuresCollection.features[i].properties.velocity || 0,
               accelerate: featuresCollection.features[i].properties.accelerate || 0,
               time: featuresCollection.features[i].properties.time || 0,
+              index: featuresCollection.features[i].properties.index || 0,
+              selected: featuresCollection.features[i].properties.selected || false,
               changeProp: featuresCollection.features[i].properties.changeProp || 'velocity'
             });
           } else {
@@ -270,26 +297,28 @@ const MapEdit = () => {
                   y: featuresCollection.features[i].geometry.coordinates[1]
                 },
                 heading: featuresCollection.features[i].properties.heading || 0,
+                index: featuresCollection.features[i].properties.index || 0,
                 velocity: featuresCollection.features[i].properties.velocity || 0,
                 accelerate: featuresCollection.features[i].properties.accelerate || 0,
                 time: featuresCollection.features[i].properties.time || 0,
-                changeProp: featuresCollection.features[i].properties.changeProp || 'velocity'
+                changeProp: featuresCollection.features[i].properties.changeProp || 'velocity',
+                selected: featuresCollection.features[i].properties.selected || false
               }
             ];
           }
         }
       }
     }
-    setSelectIndexHandle();
-
     setTriggersInfo(triggerArr);
-
     setElementInfo((prevState) => {
       for (let i = 0; i < prevState.length; i++) {
         if (tempElementInfo[prevState[i].id]) {
           prevState[i].routes = tempElementInfo[prevState[i].id];
         } else {
-          prevState[i].routes = [];
+          //其他不是选中的 都设为非选中状态
+          for (let j = 0; j < prevState[i].routes.length; j++) {
+            prevState[i].routes[j].selected = false;
+          }
         }
       }
       return [...prevState];
@@ -305,6 +334,7 @@ const MapEdit = () => {
   //从features 解析 数据
   useEffect(() => {
     getDataFromCollection();
+    //防抖
     const timer = setTimeout(() => {
       getDataFromCollectionAsync();
     }, 200);
@@ -327,41 +357,103 @@ const MapEdit = () => {
       setMode(() => translateAndScaleMode);
       setModeValue('translateAndscale');
     } else {
-      setModeValue('eidt');
+      setModeValue('edit');
       setMode(() => ModifyMode);
     }
   };
-  //设置可操作的对象
-  const setSelectIndexHandle = (id = currentElementId) => {
+  //设置可操作的对象  selectId > 0 直接设置这个值
+  const setSelectIndexHandle = (
+    type,
+    selectId,
+    id = currentElementId,
+    index = currentElementIndex
+  ) => {
+    //默认选中旋转节点
     const updatedSelectedFeatureIndexes = [];
+    if (type !== RESOURCE_TYPE.TRIGGERS) {
+      for (let i = 0; i < featuresCollection.features.length; i++) {
+        if (featuresCollection.features[i].properties.type === RESOURCE_TYPE.ROTATE_POINT) {
+          updatedSelectedFeatureIndexes.push(i);
+        }
+      }
+    }
+    if (selectId >= 0) {
+      updatedSelectedFeatureIndexes.push(selectId);
+      setSelectedFeatureIndexes(updatedSelectedFeatureIndexes);
+      return;
+    }
     for (let i = 0; i < featuresCollection.features.length; i++) {
-      if (featuresCollection.features[i].properties.elementId === id) {
+      if (
+        featuresCollection.features[i].properties.elementId === id &&
+        featuresCollection.features[i].properties.index === index
+      ) {
         updatedSelectedFeatureIndexes.push(i);
       }
     }
     setSelectedFeatureIndexes(updatedSelectedFeatureIndexes);
   };
+
+  //重新设置虚拟旋转节点
+  const setRotatePointToFeatrue = (id = currentElementId, index = currentElementIndex) => {
+    console.log('setRotatePointToFeatrue');
+    setFeaturesCollection((prevState) => {
+      let originPoint;
+      for (let i = 0; i < prevState.features.length; i++) {
+        if (
+          prevState.features[i].properties.elementId === id &&
+          prevState.features[i].properties.index === index &&
+          prevState.features[i].properties.type !== RESOURCE_TYPE.TRIGGERS &&
+          prevState.features[i].properties.type !== RESOURCE_TYPE.ROTATE_POINT
+        ) {
+          originPoint = prevState.features[i];
+          prevState.features[i].properties.selected = true;
+        } else {
+          prevState.features[i].properties.selected = false;
+        }
+      }
+      for (let i = 0; i < prevState.features.length; i++) {
+        if (
+          originPoint &&
+          originPoint.geometry &&
+          originPoint.geometry.coordinates.length === 2 &&
+          prevState.features[i].properties.type === RESOURCE_TYPE.ROTATE_POINT
+        ) {
+          prevState.features[i].geometry.coordinates = createRotatePoint(
+            originPoint.geometry.coordinates,
+            originPoint.properties.heading,
+            originPoint.properties.type
+          );
+          prevState.features[i].properties.elementId = id;
+          prevState.features[i].properties.index = index;
+        }
+      }
+      return {
+        type: 'FeatureCollection',
+        features: [...prevState.features]
+      };
+    });
+  };
+
   //点击车辆回调
-  const clickCallback = (type, id) => {
+  const clickCallback = (type, id, index = 0) => {
     setResourceLoadTreeSelectKey([id]);
     setResourceOperateType(type);
     setModeHandle(type);
     setCurrentElementId(id);
-    setSelectIndexHandle(id);
+    setCurrentElementIndex(index);
+    setSelectIndexHandle(type, -1, id, index);
+    setRotatePointToFeatrue(id, index);
   };
 
   //可编辑图层 事件
   const onEdit = ({ updatedData, editType, editContext }) => {
-    //不是拖动 鼠标移动
-    console.log(updatedData);
-    console.log(editType);
-    console.log(editContext);
     //操作触发器 时  不能删除 增加点
     if (resourceOperateType === RESOURCE_TYPE.TRIGGERS) {
       if (editType === 'removePosition' || editType === 'addPosition') {
         return;
       }
     }
+    //不是拖动 鼠标移动
     if (
       drag_type !== RESOURCE_TYPE.MAIN_CAR &&
       drag_type !== RESOURCE_TYPE.ELEMENT_CAR &&
@@ -400,14 +492,14 @@ const MapEdit = () => {
             if (drag_type === RESOURCE_TYPE.MAIN_CAR && mainCarInfo.routes.length >= 1) {
               return;
             }
+            //添加节点
             addNewElement(drag_type, editContext.feature.geometry.coordinates, true);
             return;
           }
         }
       }
     }
-    //更新
-
+    //更新节点
     const { featureIndexes } = editContext;
     if (featureIndexes) {
       if (editType === 'finishMovePosition') {
@@ -421,23 +513,63 @@ const MapEdit = () => {
             updatedData.features[featureIndexes].geometry.coordinates,
             mapData.referenceLines
           );
-          updatedData.features[featureIndexes].geometry.coordinates = calcResult[0];
-          updatedData.features[featureIndexes].properties.heading = calcResult[1];
+          if (calcResult[2]) {
+            updatedData.features[featureIndexes].geometry.coordinates = calcResult[0];
+            updatedData.features[featureIndexes].properties.heading = calcResult[1];
+          }
         }
+      }
+      //调整朝向
+      if (updatedData.features[featureIndexes].properties.type === RESOURCE_TYPE.ROTATE_POINT) {
+        let tempId;
+        let tempIndex;
+        let rotatePoint = [];
+        for (let i = 0; i < updatedData.features.length; i++) {
+          if (updatedData.features[i].properties.type === RESOURCE_TYPE.ROTATE_POINT) {
+            tempId = updatedData.features[i].properties.elementId;
+            tempIndex = updatedData.features[i].properties.index;
+            rotatePoint = updatedData.features[i].geometry.coordinates;
+            break;
+          }
+        }
+        for (let i = 0; i < updatedData.features.length; i++) {
+          if (
+            updatedData.features[i].properties.elementId === tempId &&
+            updatedData.features[i].properties.index === tempIndex &&
+            updatedData.features[i].properties.type !== RESOURCE_TYPE.ROTATE_POINT
+          ) {
+            const meters = GPS.mercator_encrypt(
+              updatedData.features[i].geometry.coordinates[0],
+              updatedData.features[i].geometry.coordinates[1]
+            );
+            const rotatePointMeters = GPS.mercator_encrypt(rotatePoint[0], rotatePoint[1]);
+            const heading = getAngleByTwoPoint(
+              [meters.x, meters.y],
+              [rotatePointMeters.x, rotatePointMeters.y]
+            );
+            updatedData.features[i].properties.heading = heading;
+          }
+        }
+      }
+      if (editType === 'finishMovePosition') {
+        setTimeout(() => {
+          setRotatePointToFeatrue();
+        }, 300);
       }
       setFeaturesCollection(updatedData);
     }
   };
   //isNewElement  是否从新产生一个新的动态元素
   const addNewElement = (type, coordinates, isNewElement = false) => {
-    console.log('-------addNewElement-----------');
     let heading = 0;
     let calcResult = [];
     //车辆 贴近道路
     if ((type === RESOURCE_TYPE.MAIN_CAR && isNewElement) || type === RESOURCE_TYPE.ELEMENT_CAR) {
       calcResult = calcMinDistancePoint(coordinates, mapData.referenceLines);
-      coordinates = calcResult[0];
-      heading = calcResult[1];
+      if (calcResult[2]) {
+        coordinates = calcResult[0];
+        heading = calcResult[1];
+      }
     }
 
     let lenIndex;
@@ -449,12 +581,7 @@ const MapEdit = () => {
       } else {
         elementId = 0;
       }
-      setResourceOperateType(type);
-      setCurrentElementId(elementId);
-      setModeHandle(type);
-      setResourceLoadTreeSelectKey([elementId]);
       lenIndex = 0;
-
       if (type === RESOURCE_TYPE.MAIN_CAR) {
         setMainCarInfo(Resource_list_main_car[0]);
       } else if (type === RESOURCE_TYPE.ELEMENT_CAR) {
@@ -499,6 +626,14 @@ const MapEdit = () => {
         }
       }
     }
+    setResourceOperateType(type);
+    setCurrentElementId(elementId);
+    setModeHandle(type);
+    setResourceLoadTreeSelectKey([elementId]);
+    setCurrentElementIndex(lenIndex);
+    //把最新添加的设置为选中
+    setSelectIndexHandle(type, featuresCollection.features.length);
+
     if (type === RESOURCE_TYPE.TRIGGERS) {
       const coordinatesArr = createRectangle(coordinates, Resource_list_triggers[0].size);
       setFeaturesCollection((prevState) => {
@@ -513,6 +648,7 @@ const MapEdit = () => {
                 type,
                 heading: 0,
                 index: lenIndex,
+                selected: false,
                 elementId,
                 coordinates,
                 size: Resource_list_triggers[0].size
@@ -538,6 +674,7 @@ const MapEdit = () => {
                 heading: heading,
                 index: lenIndex,
                 elementId,
+                selected: false,
                 //默认速度10
                 changeProp: 'velocity',
                 velocity: isNewElement ? 0 : 10
@@ -551,27 +688,40 @@ const MapEdit = () => {
         };
       });
     }
-
-    // const updatedSelectedFeatureIndexes = [
-    //   ...selectedFeatureIndexes,
-    //   selectedFeatureIndexes.length
-    // ];
-    // setSelectedFeatureIndexes(updatedSelectedFeatureIndexes);
+    setRotatePointToFeatrue(elementId, lenIndex);
   };
   //------------------------------图层创建--------------------------------
+  const getLineColor = (feature, isSelected) => {
+    if (feature.properties.type === RESOURCE_TYPE.TRIGGERS) {
+      return [255, 0, 0, 255];
+    } else if (feature.properties.type === RESOURCE_TYPE.ROTATE_POINT) {
+      return [255, 0, 0, 0];
+    } else {
+      return [0, 255, 0, 0];
+    }
+  };
+
+  const getEditHandlePointOutlineColor = (feature, isSelected) => {
+    return [0, 0, 255, 0];
+  };
+
+  const getEditHandlePointColor = (feature, isSelected) => {
+    return [0, 0, 255, 0];
+  };
+
   const layers = createMapLayer(mapData);
+
   //可编辑图层
   const editableGeoJsonLayer = new EditableGeoJsonLayer({
     id: 'geojson-layer',
     data: featuresCollection,
     selectedFeatureIndexes,
-    pointRadiusMinPixels: 8, //点的大小
-    getFillColor: [255, 255, 255, 60], //点 和 多边形的填充颜色
-    getLineColor: [0, 255, 0, 255], // 线的颜色
-    // getFillColor: [255, 255, 255, 0], //点 和 多边形的填充颜色
-    // getLineColor: [0, 255, 0, 0], // 线的颜色
-    // getEditHandlePointColor: [0, 0, 0, 0],
-    // getEditHandlePointOutlineColor: [0, 0, 0, 0],
+    pointRadiusMinPixels: 20, //点的大小
+    editHandlePointRadiusMinPixels: 40, //点的大小
+    getFillColor: [255, 255, 255, 0], //[255, 255, 255, 60], //点 和 多边形的填充颜色
+    getLineColor: getLineColor, // 线的颜色
+    getEditHandlePointColor: getEditHandlePointColor,
+    getEditHandlePointOutlineColor: getEditHandlePointOutlineColor,
     editHandlePointRadiusScale: 0,
     zIndex: -3,
     mode: mode,
@@ -585,21 +735,16 @@ const MapEdit = () => {
   layers.push(editableGeoJsonLayer);
   //汽车绘画
   const mainCarLayerData = formatIconDataFromInfo(mainCarInfo);
-  const mainCarLayers = createCarIconLayer('car-layer', mainCarLayerData, mapZoom, clickCallback);
+  const mainCarLayers = createCarIconLayer('car-layer', mainCarLayerData, clickCallback);
   layers.push(mainCarLayers);
   //障碍物绘画
   const elementLayerData = formatIconDataFromElementInfo(elementInfo);
-  const elementLayers = createCarIconLayer(
-    'element-layer',
-    elementLayerData,
-    mapZoom,
-    clickCallback
-  );
+  const elementLayers = createCarIconLayer('element-layer', elementLayerData, clickCallback);
   layers.push(elementLayers);
 
   //贝塞尔曲线绘画
   const getRouterData = async () => {
-    const points = await getBezierPointFromFeatures(elementInfo);
+    const points = await getBezierPointFromFeatures(elementInfo, currentElementId);
     const routerData = points.map((item, index) => {
       return {
         name: 'router' + index,
@@ -625,9 +770,7 @@ const MapEdit = () => {
   //------------------------------事件监听--------------------------------
   //map  视图变化
   const onViewStateChange = ({ viewState }) => {
-    // console.log(viewState);
     setMapZoom(viewState.zoom);
-    // useViewState(viewState);
   };
   //map  模式变化
   const handleMapModeChange = (value) => {
@@ -659,6 +802,9 @@ const MapEdit = () => {
     if (value === 'translateAndscale') {
       setMode(() => translateAndScaleMode);
     }
+    if (value === 'translateAndRotateMode') {
+      setMode(() => translateAndRotateMode);
+    }
   };
 
   //阻止默认事件才能触发drop
@@ -688,7 +834,6 @@ const MapEdit = () => {
   // 开始拖动 事件
   const dragStart = (e, type, data = '') => {
     console.log('start');
-    console.log(type);
     drag_type = type;
     if (drag_type === RESOURCE_TYPE.MAP) {
       e.dataTransfer.setData('text', JSON.stringify(data));
@@ -701,7 +846,6 @@ const MapEdit = () => {
 
   // 资源库切换
   const onResourceLibHandle = (keys) => {
-    console.log(keys);
     setResourceLibType(keys[0]);
   };
   // 加载到地图上的资源切换
@@ -710,7 +854,9 @@ const MapEdit = () => {
     setResourceOperateType(info.node.type);
     setModeHandle(info.node.type);
     setCurrentElementId(keys[0]);
-    setSelectIndexHandle(keys[0]);
+    setCurrentElementIndex(0);
+    setSelectIndexHandle(info.node.type, -1, keys[0], 0);
+    setRotatePointToFeatrue(keys[0], 0);
   };
   // deck 点击事件
   const onDeckClick = (info, event) => {
@@ -730,10 +876,10 @@ const MapEdit = () => {
   };
 
   const onDeckHover = (info) => {
-    if (info && info.coordinate) {
-      const meters = GPS.mercator_encrypt(info.coordinate[0], info.coordinate[1]);
-      inputEl.current.innerHTML = `X:${parseInt(meters.x)},Y:${parseInt(meters.y)}`;
-    }
+    // if (info && info.coordinate) {
+    //   const meters = GPS.mercator_encrypt(info.coordinate[0], info.coordinate[1]);
+    //   inputEl.current.innerHTML = `X:${parseInt(meters.x)},Y:${parseInt(meters.y)}`;
+    // }
   };
 
   const deleteHandle = (index, id) => {
@@ -741,15 +887,22 @@ const MapEdit = () => {
     setFeaturesCollection((prevState) => {
       //删除选中的节点
       const filterFeatures = prevState.features.filter((item) => {
-        if (item.properties.elementId === id && item.properties.index === index) {
+        if (
+          item.properties.type !== RESOURCE_TYPE.ROTATE_POINT &&
+          item.properties.elementId === id &&
+          item.properties.index === index
+        ) {
           return false;
         }
         return true;
       });
-      console.log(filterFeatures);
       //剩余节点 index 大于删除的那个 要减1
       const features = filterFeatures.map((item) => {
-        if (item.properties.elementId === id && item.properties.index > index) {
+        if (
+          item.properties.type !== RESOURCE_TYPE.ROTATE_POINT &&
+          item.properties.elementId === id &&
+          item.properties.index > index
+        ) {
           item.properties.index = item.properties.index - 1;
         }
         return item;
@@ -858,6 +1011,30 @@ const MapEdit = () => {
       });
     }
   };
+
+  //删除触发器
+  const deleteTrigger = (index, type, id) => {
+    if (type === RESOURCE_TYPE.MAIN_CAR) {
+      setMainCarInfo((prevState) => {
+        prevState.triggers.splice(index, 1);
+        return {
+          ...prevState,
+          triggers: [...prevState.triggers]
+        };
+      });
+    } else {
+      setElementInfo((prevState) => {
+        for (let i = 0; i < prevState.length; i++) {
+          if (prevState[i].id === id) {
+            prevState[i].triggers.splice(index, 1);
+            prevState[i].triggers = [...prevState[i].triggers];
+          }
+        }
+        return [...prevState];
+      });
+    }
+  };
+
   //修改触发器
   const changeTriggerSelectHandle = (value, index, type, id) => {
     if (type === RESOURCE_TYPE.MAIN_CAR) {
@@ -898,6 +1075,19 @@ const MapEdit = () => {
       for (let i = 0; i < prevState.length; i++) {
         if (prevState[i].id === id) {
           prevState[i].triggeredId[index] = value;
+          prevState[i].triggeredId = [...prevState[i].triggeredId];
+        }
+      }
+      return [...prevState];
+    });
+  };
+
+  //删除参与者
+  const deleteTriggerUser = (index, id) => {
+    setTriggersInfo((prevState) => {
+      for (let i = 0; i < prevState.length; i++) {
+        if (prevState[i].id === id) {
+          prevState[i].triggeredId.splice(index, 1);
           prevState[i].triggeredId = [...prevState[i].triggeredId];
         }
       }
@@ -968,9 +1158,9 @@ const MapEdit = () => {
           elementInfo[i].routes[j].position.x,
           elementInfo[i].routes[j].position.y
         );
-        if (j > 0 && elementInfo[i].routes[j].velocity <= 0) {
+        if (elementInfo[i].routes[j].velocity < 0) {
           message.error(
-            `${elementInfo[i].title}-${elementInfo[i].id}的第${j + 1}个路径节点速度必须大于0`
+            `${elementInfo[i].title}-${elementInfo[i].id}的第${j + 1}个路径节点速度必须大等于0`
           );
           return;
         }
@@ -1029,7 +1219,7 @@ const MapEdit = () => {
     disabledSaveBtn = false;
     if (data.code === 200) {
       message.success('创建成功!');
-      // window.close();
+      window.close();
     }
   };
 
@@ -1275,6 +1465,9 @@ const MapEdit = () => {
             </div>
           </div>
         ) : null}
+        {selectInfo.type !== RESOURCE_TYPE.TRIGGERS && resourceOperateType !== RESOURCE_TYPE.MAP ? (
+          <div className='tip'>路径点（按下ctrl加点）</div>
+        ) : null}
         {selectInfo.routes && selectInfo.routes.length > 0 ? (
           <div className='router'>
             {selectInfo.routes.map((item, index) => {
@@ -1313,8 +1506,6 @@ const MapEdit = () => {
                       <span className='val'>
                         <InputNumber
                           value={item.velocity}
-                          max={360}
-                          min={-360}
                           onBlur={(e) => {
                             changePropsHandle(e, index, selectInfo.id, 'velocity');
                           }}
@@ -1324,16 +1515,20 @@ const MapEdit = () => {
                   </div>
                   <div>
                     <span className='txt'> 朝向 : </span>
-                    <span className='val'>
-                      <InputNumber
-                        value={item.heading}
-                        max={360}
-                        min={-360}
-                        onBlur={(e) => {
-                          changePropsHandle(e, index, selectInfo.id, 'heading');
-                        }}
-                      ></InputNumber>
-                    </span>
+                    {index == 1 && selectInfo.type === RESOURCE_TYPE.MAIN_CAR ? (
+                      ''
+                    ) : (
+                      <span className='val'>
+                        <InputNumber
+                          value={item.heading}
+                          max={360}
+                          min={-360}
+                          onBlur={(e) => {
+                            changePropsHandle(e, index, selectInfo.id, 'heading');
+                          }}
+                        ></InputNumber>
+                      </span>
+                    )}
                   </div>
                   <div>
                     <span className='txt'> 时间 : </span>
@@ -1343,8 +1538,6 @@ const MapEdit = () => {
                       <span className='val'>
                         <InputNumber
                           value={item.time}
-                          max={360}
-                          min={-360}
                           onBlur={(e) => {
                             changePropsHandle(e, index, selectInfo.id, 'time');
                           }}
@@ -1377,7 +1570,7 @@ const MapEdit = () => {
                     return (
                       <div className='item' key={index}>
                         触发器ID
-                        <span className='swith'>
+                        <span>
                           <Select
                             value={item}
                             onChange={(e) => {
@@ -1394,6 +1587,12 @@ const MapEdit = () => {
                             })}
                           </Select>
                         </span>
+                        <DeleteOutlined
+                          style={{ marginLeft: 5, cursor: 'pointer' }}
+                          onClick={() => {
+                            deleteTrigger(index, selectInfo.type, selectInfo.id);
+                          }}
+                        ></DeleteOutlined>
                       </div>
                     );
                   })}
@@ -1418,7 +1617,7 @@ const MapEdit = () => {
                   return (
                     <div className='item' key={index}>
                       参与者ID
-                      <span className='swith'>
+                      <span>
                         <Select
                           value={item}
                           onChange={(e) => {
@@ -1435,6 +1634,12 @@ const MapEdit = () => {
                           })}
                         </Select>
                       </span>
+                      <DeleteOutlined
+                        style={{ marginLeft: 5, cursor: 'pointer' }}
+                        onClick={() => {
+                          deleteTriggerUser(index, selectInfo.id);
+                        }}
+                      ></DeleteOutlined>
                     </div>
                   );
                 })}
@@ -1456,15 +1661,24 @@ const MapEdit = () => {
     );
   }, [resourceOperateType, currentElementId, mapLoadInfo, mainCarInfo, elementInfo, triggersInfo]);
 
+  const caseInfo = JSON.parse(localStorage.caseInfo);
   //ViewState 会锁死视图  initialViewState 初始化视图
   return (
     <div className='map-edit-wrap'>
       <div className='tool-bar'>
-        <div className='title'>创建案例</div>
-        <div className='btn' onClick={save}>
-          保存
-        </div>
-        <div className='magnet-box' onClick={magnet}>
+        <div className='title'>案例名称：{caseInfo.caseName}</div>
+        <Popconfirm
+          title='确定编辑完成，保存退出吗?'
+          onConfirm={() => {
+            save();
+          }}
+          onCancel={() => {}}
+          okText='确定'
+          cancelText='取消'
+        >
+          <div className='btn'>保存</div>
+        </Popconfirm>
+        {/* <div className='magnet-box' onClick={magnet}>
           <div className='magnet'>
             <span className='btn-label'>
               <svg
@@ -1481,7 +1695,7 @@ const MapEdit = () => {
               </svg>
             </span>
           </div>
-        </div>
+        </div> */}
       </div>
       <div className='content-box'>
         <div className='left-box'>
@@ -1519,6 +1733,7 @@ const MapEdit = () => {
               <Option value='translate'>移动</Option>
               <Option value='scale'>缩放</Option>
               <Option value='translateAndscale'>移动+缩放</Option>
+              <Option value='translateAndRotateMode'>移动+旋转</Option>
             </Select>
           </div>
         </div>
@@ -1540,9 +1755,9 @@ const MapEdit = () => {
                   initialViewState={{
                     longitude: 0,
                     latitude: 0,
-                    zoom: 17,
-                    minZoom: 13,
-                    maxZoom: 22,
+                    zoom: 20,
+                    minZoom: 18,
+                    maxZoom: 21,
                     bearing: 0
                   }}
                   parameters={{

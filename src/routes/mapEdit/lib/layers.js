@@ -2,7 +2,6 @@ import { PathLayer, IconLayer } from '@deck.gl/layers';
 import { COORDINATE_SYSTEM } from '@deck.gl/core';
 import { PathStyleExtension } from '@deck.gl/extensions';
 import { getIconScale } from './utils';
-import { RESOURCE_TYPE } from './constant';
 //画地图
 export const createMapLayer = (mapData, showReference = true) => {
   if (!mapData) {
@@ -52,7 +51,7 @@ export const createMapLayer = (mapData, showReference = true) => {
   return [referenceLayer, solidLayer, brokenLayer];
 };
 //画车 和 障碍物
-export const createCarIconLayer = (id, data, mapZoom, clickCallback) => {
+export const createCarIconLayer = (id, data, clickCallback) => {
   return new IconLayer({
     id,
     pickable: true,
@@ -63,16 +62,17 @@ export const createCarIconLayer = (id, data, mapZoom, clickCallback) => {
       width: d.w,
       height: d.h
     }),
-    sizeUnits: 'pixels',
-    sizeScale: getIconScale(mapZoom),
+    sizeUnits: 'meters',
     onClick: (d) => {
       if (d && d.object) {
         console.log(d.object);
-        clickCallback(d.object.type, d.object.id);
+        clickCallback(d.object.type, d.object.id, d.object.index);
       }
     },
     getPosition: (d) => d.coordinates,
-    getSize: (d) => 5,
+    getSize: (d) => {
+      return getIconScale(d);
+    },
     getAngle: (d) => {
       return parseInt(d.angle);
     },

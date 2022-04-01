@@ -12,6 +12,9 @@
       width: 200px;
       line-height: 36px;
       float: left;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
       border-right: 1px solid #ccc;
       box-sizing: border-box;
     }
@@ -195,6 +198,10 @@
           box-sizing: border-box;
         }
       }
+      .tip {
+        border-bottom: 1px solid #ccc;
+        padding: 10px 20px;
+      }
       .router {
         padding: 10px 20px;
         border-bottom: 1px solid #ccc;
@@ -232,9 +239,12 @@
           margin-top: 20px;
           .item {
             margin-top: 10px;
+            span {
+              margin-left: 5px;
+            }
             .select {
               height: 24px;
-              width: 160px;
+              width: 150px;
             }
           }
         }

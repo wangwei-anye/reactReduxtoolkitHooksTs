@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { useHistory } from 'react-router-dom';
 import { Table, Button, Select, Modal, message } from 'antd';
 import {
@@ -22,12 +22,28 @@ const columns = [
     dataIndex: 'id'
   },
   {
-    title: 'Name',
+    title: '名称',
     dataIndex: 'name'
+  },
+  {
+    title: '类型',
+    dataIndex: 'type'
+  },
+  {
+    title: '创建时间',
+    dataIndex: 'createTime'
+  },
+  {
+    title: '修改时间',
+    dataIndex: 'updateTime'
+  },
+  {
+    title: '标签',
+    dataIndex: 'tags'
   }
 ];
 
-const caseBox = (props) => {
+const caseBox = (props, ref) => {
   const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
   const [isCaseModalVisible, setIsCaseModalVisible] = useState(false);
   const [current, setCurrent] = useState(1);
@@ -181,6 +197,14 @@ const caseBox = (props) => {
       };
     });
   };
+
+  useImperativeHandle(ref, () => ({
+    // changeVal 就是暴露给父组件的方法
+    setCurrent: (newVal) => {
+      setCurrent(newVal);
+    }
+  }));
+
   const paginationChangeHandle = (value) => {
     setCurrent(value);
     props.pageIndexChange(value);
@@ -191,10 +215,10 @@ const caseBox = (props) => {
     props.pageIndexChange(1);
   };
 
-  const ref = useRef();
+  const refUpload = useRef();
   const importHandle = () => {
     console.log(1111111);
-    ref.current.click();
+    refUpload.current.click();
   };
   const uploadHandle = async (e) => {
     console.log(e.target.files);
@@ -223,7 +247,7 @@ const caseBox = (props) => {
             <div>导入</div>
           </div>
           <input
-            ref={ref}
+            ref={refUpload}
             style={{ display: 'none' }}
             onChange={uploadHandle}
             accept='.xosc'
@@ -377,4 +401,4 @@ const caseBox = (props) => {
   );
 };
 
-export default caseBox;
+export default forwardRef(caseBox);

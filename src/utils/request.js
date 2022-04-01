@@ -69,6 +69,9 @@ export default function request(url, options) {
         message.destroy();
         message.error(data.msg || '服务异常');
       }
+      if (data.code === 401) {
+        window.location.href = '/login';
+      }
       return { data };
     })
     .catch((err) => {
