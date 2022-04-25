@@ -9,3 +9,11 @@ export function saveApi(query) {
   };
   return request(`${API_BASE}/cases/addWithFile`, options);
 }
+
+export function updateApi(query) {
+  const options = {
+    method: 'POST',
+    body: query
+  };
+  return request(`${API_BASE}/cases/update`, options);
+}

@@ -29,6 +29,9 @@ async function buildXvizData(fileUrl) {
   const VEHICLE_POSE = '/vehicle_pose';
   const VEHICLE_ACCELERATION = '/vehicle/acceleration';
   const VEHICLE_VELOCITY = '/vehicle/velocity';
+  const VEHICLE_THROTTLE = '/vehicle/throttle';
+  const VEHICLE_BRAKE = '/vehicle/brake';
+  const VEHICLE_STEERING = '/vehicle/steering';
   const VEHICLE_TRAJECTORY = '/vehicle/trajectory';
   const VEHICLE_WHEEL = '/vehicle/wheel_angle';
   const VEHICLE_AUTONOMOUS = '/vehicle/automy_state';
@@ -68,6 +71,21 @@ async function buildXvizData(fileUrl) {
         .category('timeSeries')
         .type('float')
         .unit('km/h')
+
+        .stream(VEHICLE_THROTTLE)
+        .category('timeSeries')
+        .type('float')
+        .unit('')
+
+        .stream(VEHICLE_BRAKE)
+        .category('timeSeries')
+        .type('float')
+        .unit('')
+
+        .stream(VEHICLE_STEERING)
+        .category('timeSeries')
+        .type('float')
+        .unit('')
 
         .stream(VEHICLE_WHEEL)
         .category('timeSeries')
@@ -117,19 +135,26 @@ async function buildXvizData(fileUrl) {
           .position(item.x, item.y, 0)
           .orientation(0, 0, item.radian);
 
-        let acc = 0;
-        let velocity = 0;
-        if (item.acceleration > -9) {
-          acc = item.acceleration;
-          velocity = item.velocity;
-        } else {
-          acc = item.acceleration * 0.6;
-          velocity = item.velocity * 0.6;
-        }
+        let acc = item.acceleration;
+        let velocity = item.velocity;
+
+        let throttle = item.throttle || 0;
+        let brake = item.brake || 0;
+        let steering = item.steering || 0;
+        // if (item.acceleration > -9) {
+        //   acc = item.acceleration;
+        //   velocity = item.velocity;
+        // } else {
+        //   acc = item.acceleration * 0.6;
+        //   velocity = item.velocity * 0.6;
+        // }
 
         xvizBuilder.timeSeries(VEHICLE_ACCELERATION).timestamp(timestamp).value(acc);
 
         xvizBuilder.timeSeries(VEHICLE_VELOCITY).timestamp(timestamp).value(velocity);
+        xvizBuilder.timeSeries(VEHICLE_THROTTLE).timestamp(timestamp).value(throttle);
+        xvizBuilder.timeSeries(VEHICLE_BRAKE).timestamp(timestamp).value(brake);
+        xvizBuilder.timeSeries(VEHICLE_STEERING).timestamp(timestamp).value(steering);
 
         xvizBuilder.timeSeries(VEHICLE_WHEEL).timestamp(timestamp).value(item.radian);
 

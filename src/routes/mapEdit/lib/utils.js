@@ -132,9 +132,18 @@ export const formatIconDataFromInfo = (carData) => {
       coordinates: [carData.routes[i].position.x, carData.routes[i].position.y],
       angle: carData.routes[i].heading,
       icon:
-        i === 0 ? (carData.routes[i].selected ? carData.icon_select : carData.icon) : carData.icon2,
-      anchorY: i === 0 ? carData.h / 2 : carData.h - 9, // 原点偏移量  h 一半
-      w: i === 0 ? (carData.routes[i].selected ? carData.selectW : carData.w) : carData.h,
+        i !== carData.routes.length - 1 || i == 0
+          ? carData.routes[i].selected
+            ? carData.icon_select
+            : carData.icon
+          : carData.icon2,
+      anchorY: i !== carData.routes.length - 1 || i == 0 ? carData.h / 2 : carData.h - 9, // 原点偏移量  h 一半
+      w:
+        i !== carData.routes.length - 1 || i == 0
+          ? carData.routes[i].selected
+            ? carData.selectW
+            : carData.w
+          : carData.h,
       h: carData.routes[i].selected ? carData.selectH : carData.h,
       length: carData.length,
       width: carData.width,
@@ -313,4 +322,123 @@ export const createRotatePoint = ([x, y], heading, type) => {
   }
   const pos = GPS.mercator_decrypt(result[0], result[1]);
   return [pos.lon, pos.lat];
+};
+
+//根据路径 和 时间 计算  到什么位置
+export const getPointByRouterAndTime = async (router, time) => {
+  if (router.length < 2) {
+    return {};
+  }
+  //大的节点
+  let startPoint;
+  let endPoint;
+  for (let i = 0; i < router.length; i++) {
+    const meters = GPS.mercator_encrypt(router[i].position.x, router[i].position.y);
+    router[i].meterPosition = { x: meters.x, y: meters.y };
+    if (i > 0 && time <= router[i].time && time > router[i - 1].time) {
+      startPoint = router[i - 1];
+      endPoint = router[i];
+    }
+  }
+  //超过全部  设最后2个点
+  if (time > router[router.length - 1].time) {
+    startPoint = router[router.length - 2];
+    endPoint = router[router.length - 1];
+  }
+
+  if (!startPoint || !endPoint) {
+    return [];
+  }
+
+  const _v0 = startPoint.velocity;
+  const _acc = endPoint.accelerate;
+  const _t = time - startPoint.time;
+  //大节点里的 移动距离
+  let moveLen = _v0 * _t + 0.5 * _acc * _t * _t;
+
+  let trajectotyArr = await getTrajectory([
+    {
+      x: startPoint.meterPosition.x,
+      y: startPoint.meterPosition.y,
+      heading: startPoint.heading
+    },
+    {
+      x: endPoint.meterPosition.x,
+      y: endPoint.meterPosition.y,
+      heading: endPoint.heading
+    }
+  ]);
+  if (trajectotyArr.length < 2) {
+    trajectotyArr = [
+      [startPoint.meterPosition.x, startPoint.meterPosition.y],
+      [endPoint.meterPosition.x, endPoint.meterPosition.y]
+    ];
+  }
+  //贝塞尔曲线里的小节点
+  let startNode;
+  let endNode;
+  //小节点里的 移动距离
+  let nodeMoveLen;
+  let total = 0;
+  for (let i = 0; i < trajectotyArr.length - 1; i++) {
+    const len = getLenByTwoPoint(trajectotyArr[i], trajectotyArr[i + 1]);
+    total += len;
+    if (moveLen <= total) {
+      startNode = trajectotyArr[i];
+      endNode = trajectotyArr[i + 1];
+      nodeMoveLen = moveLen - (total - len);
+      break;
+    }
+  }
+
+  //超出距离  设置停在最后节点
+  if (moveLen > total) {
+    startNode = trajectotyArr[trajectotyArr.length - 2];
+    endNode = trajectotyArr[trajectotyArr.length - 1];
+  }
+  const _s = getLenByTwoPoint(startNode, endNode);
+  if (moveLen > total) {
+    nodeMoveLen = _s;
+  }
+
+  const targetPoint = getTargetByTwoPointAndLen(startNode, endNode, _s, nodeMoveLen);
+  const angle = getAngleByTwoPoint(startNode, endNode);
+  const pos = GPS.mercator_decrypt(targetPoint[0], targetPoint[1]);
+
+  return {
+    coordinates: [pos.lon, pos.lat],
+    angle: angle
+  };
+};
+
+//根据两点坐标、移动距离  算出目标点坐标
+export const getTargetByTwoPointAndLen = (point1, point2, pointLen, movelen) => {
+  const x = point1[0] + (point2[0] - point1[0]) * (movelen / pointLen);
+  const y = point1[1] + (point2[1] - point1[1]) * (movelen / pointLen);
+  return [x, y];
+};
+
+//根据初始速度、结束速度、距离  算出时间和 加速度
+export const getTimeAndAccByLen = (_v0, _vt, _s) => {
+  const _t = _s / (_v0 + (_vt - _v0) / 2);
+  const acc = (_vt - _v0) / _t;
+  return [_t, acc];
+};
+
+//判断 一个 点  是否在 触发器矩形内
+export const isInTrigger = (trigger, coordinates) => {
+  const pointMeters = GPS.mercator_encrypt(coordinates[0], coordinates[1]);
+
+  const triggerMeters = GPS.mercator_encrypt(trigger.position.x, trigger.position.y);
+  const width = parseFloat(trigger.size.width);
+  const height = parseFloat(trigger.size.height);
+  if (pointMeters.x > triggerMeters.x - width / 2 && pointMeters.x < triggerMeters.x + width / 2) {
+    if (
+      pointMeters.y > triggerMeters.y - height / 2 &&
+      pointMeters.y < triggerMeters.y + height / 2
+    ) {
+      return true;
+    }
+  }
+  return false;
 };

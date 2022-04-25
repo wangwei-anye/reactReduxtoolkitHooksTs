@@ -76,10 +76,10 @@ export const Resource_lib_tree = [
 //资源列表
 export const Resource_list_map = [
   {
-    title: 'multi_intersections',
+    title: 'crest-curve',
     key: 'map1',
-    url: 'multi_intersections.xodr',
-    icon: Icon_map1
+    url: 'crest-curve.xodr',
+    icon: Icon_map5
   },
   {
     title: 'straight_500m',
@@ -88,16 +88,16 @@ export const Resource_list_map = [
     icon: Icon_map3
   },
   {
-    title: 'e6mini',
+    title: 'multi_intersections',
     key: 'map4',
-    url: 'e6mini.xodr',
-    icon: Icon_map4
+    url: 'multi_intersections.xodr',
+    icon: Icon_map1
   },
   {
-    title: 'crest-curve',
+    title: 'e6mini',
     key: 'map5',
-    url: 'crest-curve.xodr',
-    icon: Icon_map5
+    url: 'e6mini.xodr',
+    icon: Icon_map4
   },
   {
     title: 'curve_r100',

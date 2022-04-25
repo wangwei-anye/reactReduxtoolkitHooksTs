@@ -1,7 +1,24 @@
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useSelector, useDispatch } from 'react-redux';
-import { Tree, Spin, Select, Input, InputNumber, Popconfirm, Switch, message } from 'antd';
-import { DeleteOutlined, PlusCircleOutlined } from '@ant-design/icons';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
+import {
+  Tree,
+  Spin,
+  Select,
+  Tooltip,
+  InputNumber,
+  Popconfirm,
+  Switch,
+  message,
+  Modal,
+  Button
+} from 'antd';
+import {
+  DeleteOutlined,
+  PlusCircleOutlined,
+  PlayCircleOutlined,
+  PauseCircleOutlined,
+  StopOutlined,
+  LoginOutlined
+} from '@ant-design/icons';
 import {
   EditableGeoJsonLayer,
   DrawPointMode,
@@ -29,10 +46,13 @@ import {
   getTotalLenByPoint,
   createRotatePoint,
   getAngleByTwoPoint,
-  getRotateScaleLen
+  getPointByRouterAndTime,
+  isInTrigger
 } from './lib/utils';
 import getTrajectory from '@/utils/getTrajectory';
-import { saveApi } from '@/services/mapEdit';
+import { saveApi, updateApi } from '@/services/mapEdit';
+import { getAlgorithm } from '@/services/caseLib';
+import { createTaskApi } from '@/services/task';
 import { createMapLayer, createCarIconLayer, createRouterLayer } from './lib/layers';
 import {
   Resource_lib_tree,
@@ -59,6 +79,11 @@ let isDropEnd = false; //拖动到map 的flag
 let createElementId = 1; //元素ID ，生成一个新元素 就加1
 let lastFileLen = 0; //上一次的资源加载树的 文件数量，只有数量变化的时候才重新渲染，默认打开才有效果
 let disabledSaveBtn = false;
+let playFrame = 0;
+let playInterval;
+let playStartTrigger = {}; //已经触发的触发器  { id :  触发时间 }
+let lastSaveYaml = ''; //上一次保存的yaml  退出编辑器时候判断提示
+let isCreateTask = false; //保存后是否需要运行案例
 const MapEdit = () => {
   //可编辑的 Feature   Indexes
   const [selectedFeatureIndexes, setSelectedFeatureIndexes] = useState([0]);
@@ -107,6 +132,18 @@ const MapEdit = () => {
   const [triggersInfo, setTriggersInfo] = useState([]); //数组  多个
   const [routerData, setRouterData] = useState([]); //数组  多个
 
+  //是否播放状态
+  const [isPlay, setIsPlay] = useState(false);
+  //是否播放中
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [playData, setPlayData] = useState([]);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
+  const [algorithmArr, setAlgorithmArr] = useState([]);
+  const [algorithm, setAlgorithm] = useState();
+  const [taskName, setTaskName] = useState();
+  const [disabledBtn, setDisabledBtn] = useState(false);
+
   const inputEl = useRef(null);
   //--------------数据流----------------
   //数据流： FeatureCollection -> mainCarInfo、mapLoadInfo -> 属性面板显示
@@ -118,23 +155,37 @@ const MapEdit = () => {
       const result = await getDataFromXodr(url);
       setLoading(false);
       setMapData(result);
-    } catch (error) {
-      console.log(111111);
-    }
+    } catch (error) {}
   };
   //初始化
-  useEffect(() => {}, []);
-  //异步更新 速度 距离 加速
+  useEffect(() => {
+    if (localStorage.caseType === 'edit') {
+      getFile(localStorage.caseData);
+    }
+  }, []);
+
+  const getFile = async (url) => {
+    fetch(url)
+      .then((file_data) => {
+        return file_data.text();
+      })
+      .then((file_text) => {
+        getDataFromYaml(file_text);
+        setTimeout(() => {
+          getDataFromYamlAsnyc(file_text);
+        }, 2000);
+      });
+  };
+
+  //异步更新 速度 距离 加速  因为 计算贝塞尔 函数 是异步
   const getDataFromCollectionAsync = async () => {
-    console.log('------------------featuresCollection async---------------------');
     const tempElementInfo = {};
     for (let i = 0; i < featuresCollection.features.length; i++) {
       if (featuresCollection.features[i].properties.type) {
         if (
           featuresCollection.features[i].properties.type !== RESOURCE_TYPE.TRIGGERS &&
-          featuresCollection.features[i].properties.type !== RESOURCE_TYPE.MAIN_CAR &&
-          featuresCollection.features[i].properties.type !== RESOURCE_TYPE.ROTATE_POINT &&
-          featuresCollection.features[i].properties.elementId === currentElementId //只修改当前选中的对象
+          featuresCollection.features[i].properties.type !== RESOURCE_TYPE.ROTATE_POINT
+          // featuresCollection.features[i].properties.elementId === currentElementId //只修改当前选中的对象
         ) {
           if (tempElementInfo[featuresCollection.features[i].properties.elementId]) {
             tempElementInfo[featuresCollection.features[i].properties.elementId].push({
@@ -229,11 +280,24 @@ const MapEdit = () => {
       }
       return [...prevState];
     });
+    setMainCarInfo((prevState) => {
+      if (tempElementInfo[0]) {
+        const tempArr = tempElementInfo[0];
+        for (let m = 0; m < prevState.routes.length; m++) {
+          if (tempArr[m]) {
+            prevState.routes[m].velocity = tempArr[m].velocity;
+            prevState.routes[m].time = tempArr[m].time;
+            prevState.routes[m].accelerate = tempArr[m].accelerate;
+          }
+        }
+      }
+      return {
+        ...prevState
+      };
+    });
   };
   //根据FeatureCollection 计算 mainCarInfo、elementInfo
   const getDataFromCollection = () => {
-    console.log('------------------featuresCollection---------------------');
-    console.log(featuresCollection);
     const mainCarRoutes = [];
     const tempElementInfo = {};
     const triggerArr = [];
@@ -248,10 +312,8 @@ const MapEdit = () => {
             },
             index: featuresCollection.features[i].properties.index || 0,
             heading: featuresCollection.features[i].properties.heading || 0,
-            velocity: featuresCollection.features[i].properties.velocity || 0,
-            accelerate: featuresCollection.features[i].properties.accelerate || 0,
-            time: featuresCollection.features[i].properties.time || 0,
-            selected: featuresCollection.features[i].properties.selected || false
+            selected: featuresCollection.features[i].properties.selected || false,
+            changeProp: featuresCollection.features[i].properties.changeProp || 'velocity'
           });
         } else if (featuresCollection.features[i].properties.type === RESOURCE_TYPE.TRIGGERS) {
           const obj = calcRectangle(featuresCollection.features[i].geometry.coordinates);
@@ -275,6 +337,7 @@ const MapEdit = () => {
           featuresCollection.features[i].properties.type !== RESOURCE_TYPE.ROTATE_POINT &&
           featuresCollection.features[i].properties.elementId === currentElementId
         ) {
+          //动态元素
           if (tempElementInfo[featuresCollection.features[i].properties.elementId]) {
             tempElementInfo[featuresCollection.features[i].properties.elementId].push({
               position: {
@@ -282,9 +345,6 @@ const MapEdit = () => {
                 y: featuresCollection.features[i].geometry.coordinates[1]
               },
               heading: featuresCollection.features[i].properties.heading || 0,
-              velocity: featuresCollection.features[i].properties.velocity || 0,
-              accelerate: featuresCollection.features[i].properties.accelerate || 0,
-              time: featuresCollection.features[i].properties.time || 0,
               index: featuresCollection.features[i].properties.index || 0,
               selected: featuresCollection.features[i].properties.selected || false,
               changeProp: featuresCollection.features[i].properties.changeProp || 'velocity'
@@ -298,9 +358,6 @@ const MapEdit = () => {
                 },
                 heading: featuresCollection.features[i].properties.heading || 0,
                 index: featuresCollection.features[i].properties.index || 0,
-                velocity: featuresCollection.features[i].properties.velocity || 0,
-                accelerate: featuresCollection.features[i].properties.accelerate || 0,
-                time: featuresCollection.features[i].properties.time || 0,
                 changeProp: featuresCollection.features[i].properties.changeProp || 'velocity',
                 selected: featuresCollection.features[i].properties.selected || false
               }
@@ -323,7 +380,10 @@ const MapEdit = () => {
       }
       return [...prevState];
     });
-
+    //主车目标点  heading 为 0
+    if (mainCarRoutes.length > 1) {
+      mainCarRoutes[mainCarRoutes.length - 1].heading = 0;
+    }
     setMainCarInfo((prevState) => {
       return {
         ...prevState,
@@ -346,13 +406,11 @@ const MapEdit = () => {
   //初始化地图加载
   useEffect(() => {
     if (mapLoadInfo.url) {
-      console.log('map change');
       setMapHandle(mapLoadInfo.url);
     }
   }, [mapLoadInfo]);
   //操作对象变化 模式变化
   const setModeHandle = (type) => {
-    console.log('setMode');
     if (type === RESOURCE_TYPE.TRIGGERS) {
       setMode(() => translateAndScaleMode);
       setModeValue('translateAndscale');
@@ -395,7 +453,6 @@ const MapEdit = () => {
 
   //重新设置虚拟旋转节点
   const setRotatePointToFeatrue = (id = currentElementId, index = currentElementIndex) => {
-    console.log('setRotatePointToFeatrue');
     setFeaturesCollection((prevState) => {
       let originPoint;
       for (let i = 0; i < prevState.features.length; i++) {
@@ -436,6 +493,7 @@ const MapEdit = () => {
 
   //点击车辆回调
   const clickCallback = (type, id, index = 0) => {
+    if (isPlay) return;
     setResourceLoadTreeSelectKey([id]);
     setResourceOperateType(type);
     setModeHandle(type);
@@ -447,6 +505,7 @@ const MapEdit = () => {
 
   //可编辑图层 事件
   const onEdit = ({ updatedData, editType, editContext }) => {
+    if (isPlay) return;
     //操作触发器 时  不能删除 增加点
     if (resourceOperateType === RESOURCE_TYPE.TRIGGERS) {
       if (editType === 'removePosition' || editType === 'addPosition') {
@@ -489,9 +548,9 @@ const MapEdit = () => {
           if (isDropEnd) {
             // 刚拖动完的第一个移动事件
             isDropEnd = false;
-            if (drag_type === RESOURCE_TYPE.MAIN_CAR && mainCarInfo.routes.length >= 1) {
-              return;
-            }
+            // if (drag_type === RESOURCE_TYPE.MAIN_CAR && mainCarInfo.routes.length >= 1) {
+            //   return;
+            // }
             //添加节点
             addNewElement(drag_type, editContext.feature.geometry.coordinates, true);
             return;
@@ -505,8 +564,7 @@ const MapEdit = () => {
       if (editType === 'finishMovePosition') {
         //重新计算贴近道路 的点坐标
         if (
-          (updatedData.features[featureIndexes].properties.type === RESOURCE_TYPE.MAIN_CAR &&
-            updatedData.features[featureIndexes].properties.index === 0) ||
+          updatedData.features[featureIndexes].properties.type === RESOURCE_TYPE.MAIN_CAR ||
           updatedData.features[featureIndexes].properties.type === RESOURCE_TYPE.ELEMENT_CAR
         ) {
           const calcResult = calcMinDistancePoint(
@@ -709,42 +767,169 @@ const MapEdit = () => {
     return [0, 0, 255, 0];
   };
 
-  const layers = createMapLayer(mapData);
+  const playHandle = () => {
+    setIsPlay(true);
+    setIsPlaying(true);
+    playInterval = setInterval(() => {
+      playFrame += 0.08;
+      updateState();
+    }, 80);
+    return () => {
+      clearInterval(playInterval);
+    };
+  };
+  //暂停
+  const pauseHandle = () => {
+    setIsPlaying(false);
+    clearInterval(playInterval);
+  };
+  //停止
+  const stopHandle = () => {
+    setIsPlay(false);
+    setIsPlaying(false);
+    playFrame = 0;
+    playStartTrigger = {};
+    setPlayData([]);
+    clearInterval(playInterval);
+  };
 
-  //可编辑图层
-  const editableGeoJsonLayer = new EditableGeoJsonLayer({
-    id: 'geojson-layer',
-    data: featuresCollection,
-    selectedFeatureIndexes,
-    pointRadiusMinPixels: 20, //点的大小
-    editHandlePointRadiusMinPixels: 40, //点的大小
-    getFillColor: [255, 255, 255, 0], //[255, 255, 255, 60], //点 和 多边形的填充颜色
-    getLineColor: getLineColor, // 线的颜色
-    getEditHandlePointColor: getEditHandlePointColor,
-    getEditHandlePointOutlineColor: getEditHandlePointOutlineColor,
-    editHandlePointRadiusScale: 0,
-    zIndex: -3,
-    mode: mode,
-    onClick: (e) => {
-      if (e.object && e.object.properties && e.object.properties.type === RESOURCE_TYPE.TRIGGERS) {
-        clickCallback(e.object.properties.type, e.object.properties.elementId);
+  //判断元素是否开始播放
+  const isElementStartPlay = (element) => {
+    if (element.actImmediately) {
+      return {
+        isStart: true,
+        startTime: 0
+      };
+    }
+    for (let i = 0; i < element.triggers.length; i++) {
+      if (playStartTrigger[element.triggers[i]]) {
+        return {
+          isStart: true,
+          startTime: playStartTrigger[element.triggers[i]]
+        };
       }
-    },
-    onEdit
-  });
-  layers.push(editableGeoJsonLayer);
-  //汽车绘画
-  const mainCarLayerData = formatIconDataFromInfo(mainCarInfo);
-  const mainCarLayers = createCarIconLayer('car-layer', mainCarLayerData, clickCallback);
-  layers.push(mainCarLayers);
-  //障碍物绘画
-  const elementLayerData = formatIconDataFromElementInfo(elementInfo);
-  const elementLayers = createCarIconLayer('element-layer', elementLayerData, clickCallback);
-  layers.push(elementLayers);
+    }
+    return {
+      isStart: false,
+      startTime: 0
+    };
+  };
 
-  //贝塞尔曲线绘画
+  //判断是否有触发器触发
+  const isPlayTriggerStart = (coordinates, id, playFrame) => {
+    for (let i = 0; i < triggersInfo.length; i++) {
+      if (triggersInfo[i].triggeredId.includes(id)) {
+        const flag = isInTrigger(triggersInfo[i], coordinates);
+        if (flag && !playStartTrigger[triggersInfo[i].id]) {
+          playStartTrigger[triggersInfo[i].id] = playFrame;
+        }
+      }
+    }
+  };
+
+  const updateState = () => {
+    playUpdateHandle([...elementInfo, mainCarInfo]);
+  };
+
+  const playUpdateHandle = async (arr) => {
+    const result = [];
+    for (let i = 0; i < arr.length; i++) {
+      const obj = arr[i];
+      if (obj.routes && obj.routes.length > 0) {
+        const isElementStart = isElementStartPlay(obj);
+        let coordinates = [];
+        let angle;
+        if (!isElementStart.isStart || obj.routes.length === 1) {
+          coordinates = [obj.routes[0].position.x, obj.routes[0].position.y];
+          angle = obj.routes[0].heading;
+        }
+        if (isElementStart.isStart && playFrame - isElementStart.startTime > 0) {
+          const calcResult = await getPointByRouterAndTime(
+            obj.routes,
+            playFrame - isElementStart.startTime
+          );
+          if (calcResult.coordinates) {
+            coordinates = calcResult.coordinates;
+            angle = calcResult.angle;
+            isPlayTriggerStart(calcResult.coordinates, obj.id, playFrame);
+          }
+        } else {
+          coordinates = [obj.routes[0].position.x, obj.routes[0].position.y];
+          angle = obj.routes[0].heading;
+        }
+
+        result.push({
+          id: obj.id,
+          type: obj.type,
+          coordinates: coordinates,
+          angle: angle,
+          icon: obj.type === RESOURCE_TYPE.MAIN_CAR ? obj.icon : obj.icon2,
+          anchorY: obj.h / 2,
+          w: obj.w,
+          h: obj.h,
+          length: obj.length,
+          width: obj.width,
+          index: 0
+        });
+      }
+    }
+    setPlayData(result);
+  };
+
+  const layers = createMapLayer(mapData);
+  if (isPlay) {
+    const playLayers = createCarIconLayer('play-layer', playData, null);
+    layers.push(playLayers);
+  } else {
+    //可编辑图层
+    const editableGeoJsonLayer = new EditableGeoJsonLayer({
+      id: 'geojson-layer',
+      data: featuresCollection,
+      selectedFeatureIndexes,
+      pointRadiusMinPixels: 20, //点的大小
+      editHandlePointRadiusMinPixels: 40, //点的大小
+      getFillColor: [255, 255, 255, 0], //[255, 255, 255, 60], //点 和 多边形的填充颜色
+      getLineColor: getLineColor, // 线的颜色
+      getEditHandlePointColor: getEditHandlePointColor,
+      getEditHandlePointOutlineColor: getEditHandlePointOutlineColor,
+      editHandlePointRadiusScale: 0,
+      getTentativeLineColor: [0, 255, 0, 255], // 编辑状态下的  辅助线条颜色
+      zIndex: -3,
+      mode: mode,
+      onClick: (e) => {
+        if (
+          e.object &&
+          e.object.properties &&
+          e.object.properties.type === RESOURCE_TYPE.TRIGGERS
+        ) {
+          clickCallback(e.object.properties.type, e.object.properties.elementId);
+        }
+      },
+      onEdit
+    });
+    layers.push(editableGeoJsonLayer);
+    //汽车绘画
+    const mainCarLayerData = formatIconDataFromInfo(mainCarInfo);
+    const mainCarLayers = createCarIconLayer('car-layer', mainCarLayerData, clickCallback);
+    layers.push(mainCarLayers);
+    //障碍物绘画
+    const elementLayerData = formatIconDataFromElementInfo(elementInfo);
+    const elementLayers = createCarIconLayer('element-layer', elementLayerData, clickCallback);
+    layers.push(elementLayers);
+
+    //贝塞尔曲线绘画
+    if (routerData.length > 0) {
+      const routerLayers = createRouterLayer('route-layer', routerData);
+      layers.push(routerLayers);
+    }
+  }
+
+  //贝塞尔曲线计算
   const getRouterData = async () => {
-    const points = await getBezierPointFromFeatures(elementInfo, currentElementId);
+    const points = await getBezierPointFromFeatures(
+      [...elementInfo, mainCarInfo],
+      currentElementId
+    );
     const routerData = points.map((item, index) => {
       return {
         name: 'router' + index,
@@ -761,11 +946,6 @@ const MapEdit = () => {
       clearTimeout(timer);
     };
   }, [elementInfo]);
-
-  if (routerData.length > 0) {
-    const routerLayers = createRouterLayer('route-layer', routerData);
-    layers.push(routerLayers);
-  }
 
   //------------------------------事件监听--------------------------------
   //map  视图变化
@@ -816,15 +996,15 @@ const MapEdit = () => {
   };
   //拖动结束事件
   const dragEnd = (e) => {
+    if (isPlay) return;
     setTimeout(() => {
-      console.log('dragEnd');
       setModeHandle(drag_type);
       drag_type = '';
     }, 200);
   };
   //拖动  到 map 事件
   const dropHandle = (e) => {
-    console.log('drag target');
+    if (isPlay) return;
     if (drag_type === RESOURCE_TYPE.MAP) {
       setMapLoadInfo(JSON.parse(e.dataTransfer.getData('text')));
     } else {
@@ -833,7 +1013,7 @@ const MapEdit = () => {
   };
   // 开始拖动 事件
   const dragStart = (e, type, data = '') => {
-    console.log('start');
+    if (isPlay) return;
     drag_type = type;
     if (drag_type === RESOURCE_TYPE.MAP) {
       e.dataTransfer.setData('text', JSON.stringify(data));
@@ -860,8 +1040,10 @@ const MapEdit = () => {
   };
   // deck 点击事件
   const onDeckClick = (info, event) => {
+    if (isPlay) return;
     if (event.srcEvent.ctrlKey) {
-      if (resourceOperateType === RESOURCE_TYPE.MAIN_CAR && mainCarInfo.routes.length === 1) {
+      if (resourceOperateType === RESOURCE_TYPE.MAIN_CAR) {
+        // && mainCarInfo.routes.length === 1
         addNewElement(resourceOperateType, info.coordinate);
       }
       if (
@@ -883,6 +1065,7 @@ const MapEdit = () => {
   };
 
   const deleteHandle = (index, id) => {
+    if (isPlay) return;
     let newLen = 0;
     setFeaturesCollection((prevState) => {
       //删除选中的节点
@@ -920,6 +1103,7 @@ const MapEdit = () => {
     // );
   };
   const deleteObj = (type, id) => {
+    if (isPlay) return;
     if (type === RESOURCE_TYPE.MAIN_CAR) {
       setMainCarInfo({});
     } else if (type !== RESOURCE_TYPE.TRIGGERS) {
@@ -951,6 +1135,7 @@ const MapEdit = () => {
 
   //更改面板属性
   const changePropsHandle = (e, index, id, propsType) => {
+    if (isPlay) return;
     const val = parseInt(e.target.value);
     if (isNaN(val)) {
       return;
@@ -973,6 +1158,7 @@ const MapEdit = () => {
   };
   //是否起开触发器
   const changeSwithHandle = (checked, type, id) => {
+    if (isPlay) return;
     if (type === RESOURCE_TYPE.MAIN_CAR) {
       setMainCarInfo((prevState) => {
         return {
@@ -993,6 +1179,7 @@ const MapEdit = () => {
   };
   //添加触发器
   const addTrigger = (type, id) => {
+    if (isPlay) return;
     if (type === RESOURCE_TYPE.MAIN_CAR) {
       setMainCarInfo((prevState) => {
         return {
@@ -1014,6 +1201,7 @@ const MapEdit = () => {
 
   //删除触发器
   const deleteTrigger = (index, type, id) => {
+    if (isPlay) return;
     if (type === RESOURCE_TYPE.MAIN_CAR) {
       setMainCarInfo((prevState) => {
         prevState.triggers.splice(index, 1);
@@ -1037,6 +1225,7 @@ const MapEdit = () => {
 
   //修改触发器
   const changeTriggerSelectHandle = (value, index, type, id) => {
+    if (isPlay) return;
     if (type === RESOURCE_TYPE.MAIN_CAR) {
       setMainCarInfo((prevState) => {
         prevState.triggers[index] = value;
@@ -1060,6 +1249,7 @@ const MapEdit = () => {
 
   //添加参与者
   const addTriggerUser = (id) => {
+    if (isPlay) return;
     setTriggersInfo((prevState) => {
       for (let i = 0; i < prevState.length; i++) {
         if (prevState[i].id === id) {
@@ -1071,6 +1261,7 @@ const MapEdit = () => {
   };
   //修改参与者
   const changeUserSelectHandle = (value, index, id) => {
+    if (isPlay) return;
     setTriggersInfo((prevState) => {
       for (let i = 0; i < prevState.length; i++) {
         if (prevState[i].id === id) {
@@ -1084,6 +1275,7 @@ const MapEdit = () => {
 
   //删除参与者
   const deleteTriggerUser = (index, id) => {
+    if (isPlay) return;
     setTriggersInfo((prevState) => {
       for (let i = 0; i < prevState.length; i++) {
         if (prevState[i].id === id) {
@@ -1095,8 +1287,8 @@ const MapEdit = () => {
     });
   };
 
-  //保存
-  const save = async () => {
+  //保存  isExit 是否退出  isCheckChange //是否判断有修改  isUseChangeResult 是否使用修改后的结果
+  const saveHandle = async (isExit, isCheckChange = true, isUseChangeResult = true) => {
     const yamlData = {};
     if (!mapLoadInfo.url) {
       message.error('请选择地图');
@@ -1142,6 +1334,7 @@ const MapEdit = () => {
     }
     yamlData.Agents.push({
       type: 'vehicle',
+      subType: RESOURCE_TYPE.MAIN_CAR,
       id: 0,
       length: mainCarInfo.length,
       width: mainCarInfo.width,
@@ -1183,6 +1376,7 @@ const MapEdit = () => {
       }
       yamlData.Agents.push({
         type: 'vehicle',
+        subType: elementInfo[i].type,
         id: elementInfo[i].id,
         length: elementInfo[i].length,
         width: elementInfo[i].width,
@@ -1194,8 +1388,19 @@ const MapEdit = () => {
     }
     const yamlDoc = new YAML.Document();
     yamlDoc.contents = yamlData;
-    const doc = yamlDoc.toString();
-    console.log(doc);
+    let doc = yamlDoc.toString();
+
+    if (isExit) {
+      //退出编辑器 有修改 就弹窗提示
+      if (isCheckChange && lastSaveYaml !== doc) {
+        setIsModalVisible(true);
+        return;
+      }
+      //退出编辑器 有修改 就弹窗提示
+      if (!isUseChangeResult) {
+        doc = lastSaveYaml;
+      }
+    }
 
     let file;
     let properties = { type: 'text/plain' };
@@ -1209,21 +1414,282 @@ const MapEdit = () => {
     const formData = new FormData();
     formData.append('menuId', caseInfo.menuId);
     formData.append('name', caseInfo.caseName);
+    formData.append('tags', caseInfo.caseTag);
     formData.append('type', 'yaml');
     formData.append('file', file);
+    if (localStorage.caseType === 'edit') {
+      formData.append('id', caseInfo.id);
+    }
     if (disabledSaveBtn) {
       return;
     }
     disabledSaveBtn = true;
-    const { data } = await saveApi(formData);
+    let data = {};
+    if (localStorage.caseType === 'edit') {
+      data = await updateApi(formData);
+    } else {
+      data = await saveApi(formData);
+    }
+
     disabledSaveBtn = false;
-    if (data.code === 200) {
-      message.success('创建成功!');
-      window.close();
+    if (data.data.code === 200) {
+      lastSaveYaml = doc;
+      setIsModalVisible(false);
+      if (!isCreateTask) {
+        message.success('成功!');
+      }
+      if (isExit) {
+        window.close();
+      } else {
+        localStorage.caseType = 'edit';
+        caseInfo.id = data.data.data;
+        localStorage.caseInfo = JSON.stringify(caseInfo);
+        if (isCreateTask) {
+          createTask();
+        }
+      }
     }
   };
 
-  const magnet = () => {};
+  //保存
+  const save = () => {
+    saveHandle(false, false, true);
+  };
+  const exit = () => {
+    saveHandle(true, true, true);
+  };
+
+  const modalHandleOk = () => {
+    saveHandle(true, false, true);
+  };
+  const modalHandleOkNoSave = () => {
+    saveHandle(true, false, false);
+  };
+
+  const modalHandleCancel = () => {
+    setIsModalVisible(false);
+  };
+  const run = () => {
+    setIsTaskModalVisible(true);
+    setTaskName('task_' + new Date().toLocaleString());
+    getAlgorithmHandle();
+  };
+  const getAlgorithmHandle = async () => {
+    const { data } = await getAlgorithm();
+    if (data.code === 200) {
+      setAlgorithmArr(data.data);
+    }
+  };
+
+  const algorithmChangeHandle = (value) => {
+    setAlgorithm(value);
+  };
+  const taskNameChangeHandle = (e) => {
+    setTaskName(e.target.value);
+  };
+
+  //任务
+  const modalTaskHandleOk = async () => {
+    if (!taskName) {
+      message.info('请输入任务名称');
+      return;
+    }
+    if (!algorithm) {
+      message.info('请选择算法');
+      return;
+    }
+    isCreateTask = true;
+    setDisabledBtn(true);
+    saveHandle(false, false, true);
+  };
+  //任务
+  const createTask = async () => {
+    isCreateTask = false;
+    setDisabledBtn(false);
+    const caseInfo = JSON.parse(localStorage.caseInfo);
+    const { data } = await createTaskApi({
+      algorithm: algorithm,
+      name: taskName,
+      caseIds: caseInfo.id
+    });
+    if (data.code === 200) {
+      message.success('任务创建成功!');
+      setIsTaskModalVisible(false);
+    }
+  };
+
+  const modalTaskHandleCancel = () => {
+    setIsTaskModalVisible(false);
+  };
+
+  const getDataFromYaml = (yaml) => {
+    const editData = YAML.parse(yaml);
+    lastSaveYaml = YAML.stringify(editData);
+
+    for (let i = 0; i < Resource_list_map.length; i++) {
+      if (Resource_list_map[i].url === editData.MapFileName) {
+        setMapLoadInfo(Resource_list_map[i]);
+      }
+    }
+    for (let i = 0; i < editData.Triggers.length; i++) {
+      const pos = GPS.mercator_decrypt(
+        editData.Triggers[i].position.x,
+        editData.Triggers[i].position.y
+      );
+      const coordinates = [pos.lon, pos.lat];
+      const coordinatesArr = createRectangle(coordinates, editData.Triggers[i].size, true);
+      setFeaturesCollection((prevState) => {
+        return {
+          type: 'FeatureCollection',
+          features: [
+            ...prevState.features,
+            {
+              type: 'Feature',
+              properties: {
+                shape: 'Rectangle',
+                type: RESOURCE_TYPE.TRIGGERS,
+                heading: 0,
+                index: 0,
+                selected: false,
+                elementId: editData.Triggers[i].id,
+                coordinates,
+                size: editData.Triggers[i].size
+              },
+              geometry: {
+                type: 'Polygon',
+                coordinates: [coordinatesArr]
+              }
+            }
+          ]
+        };
+      });
+    }
+    setMainCarInfo(Resource_list_main_car[0]);
+    for (let i = 0; i < editData.Agents.length; i++) {
+      if (editData.Agents[i].id >= createElementId) {
+        createElementId = editData.Agents[i].id + 1;
+      }
+      if (editData.Agents[i].id === 0) {
+        for (let j = 0; j < editData.Agents[i].routes.length; j++) {
+          const pos = GPS.mercator_decrypt(
+            editData.Agents[i].routes[j].position.x,
+            editData.Agents[i].routes[j].position.y
+          );
+          const coordinates = [pos.lon, pos.lat];
+          setFeaturesCollection((prevState) => {
+            return {
+              type: 'FeatureCollection',
+              features: [
+                ...prevState.features,
+                {
+                  type: 'Feature',
+                  properties: {
+                    type: RESOURCE_TYPE.MAIN_CAR,
+                    heading: editData.Agents[i].routes[j].heading,
+                    index: editData.Agents[i].routes[j].index,
+                    elementId: editData.Agents[i].id,
+                    selected: editData.Agents[i].routes[j].selected,
+                    //默认速度10
+                    changeProp: 'velocity',
+                    accelerate: editData.Agents[i].routes[j].accelerate,
+                    velocity: editData.Agents[i].routes[j].velocity
+                  },
+                  geometry: {
+                    type: 'Point',
+                    coordinates: coordinates
+                  }
+                }
+              ]
+            };
+          });
+        }
+      } else {
+        let type_list = Resource_list_element_car[0];
+        if (editData.Agents[i].subType === RESOURCE_TYPE.ELEMENT_PEOPLE) {
+          type_list = Resource_list_element_people[0];
+        }
+        if (editData.Agents[i].subType === RESOURCE_TYPE.ELEMENT_ANIMAL) {
+          type_list = Resource_list_element_animal[0];
+        }
+        if (editData.Agents[i].subType === RESOURCE_TYPE.ELEMENT_BICYCLE) {
+          type_list = Resource_list_element_bicycle[0];
+        }
+        setElementInfo((prevState) => {
+          return [...prevState, Object.assign({}, type_list, { id: editData.Agents[i].id })];
+        });
+        //必须设置这个  才能渲染出来  因为在 getDataFromCollection  判断了只获取当前操作ID 的数据
+        setCurrentElementId(editData.Agents[i].id);
+        for (let j = 0; j < editData.Agents[i].routes.length; j++) {
+          const pos = GPS.mercator_decrypt(
+            editData.Agents[i].routes[j].position.x,
+            editData.Agents[i].routes[j].position.y
+          );
+          const coordinates = [pos.lon, pos.lat];
+          setFeaturesCollection((prevState) => {
+            return {
+              type: 'FeatureCollection',
+              features: [
+                ...prevState.features,
+                {
+                  type: 'Feature',
+                  properties: {
+                    type: editData.Agents[i].subType,
+                    heading: editData.Agents[i].routes[j].heading,
+                    index: editData.Agents[i].routes[j].index,
+                    elementId: editData.Agents[i].id,
+                    selected: editData.Agents[i].routes[j].selected,
+                    //默认速度10
+                    changeProp: 'velocity',
+                    accelerate: editData.Agents[i].routes[j].accelerate,
+                    velocity: editData.Agents[i].routes[j].velocity
+                  },
+                  geometry: {
+                    type: 'Point',
+                    coordinates: coordinates
+                  }
+                }
+              ]
+            };
+          });
+        }
+      }
+    }
+  };
+
+  const getDataFromYamlAsnyc = (yaml) => {
+    const editData = YAML.parse(yaml);
+    for (let i = 0; i < editData.Triggers.length; i++) {
+      setTriggersInfo((prevState) => {
+        for (let j = 0; j < prevState.length; j++) {
+          if (prevState[j].id === editData.Triggers[i].id) {
+            prevState[j].triggeredId = [editData.Triggers[i].triggeredId];
+          }
+        }
+        return [...prevState];
+      });
+    }
+    for (let i = 0; i < editData.Agents.length; i++) {
+      if (editData.Agents[i].id === 0) {
+        setMainCarInfo((prevState) => {
+          return {
+            ...prevState,
+            actImmediately: editData.Agents[i].actImmediately,
+            triggers: triggerFormat(editData.Agents[i].triggers)
+          };
+        });
+      } else {
+        setElementInfo((prevState) => {
+          for (let j = 0; j < prevState.length; j++) {
+            if (prevState[j].id === editData.Agents[i].id) {
+              prevState[j].actImmediately = editData.Agents[i].actImmediately;
+              prevState[j].triggers = triggerFormat(editData.Agents[i].triggers);
+            }
+          }
+          return [...prevState];
+        });
+      }
+    }
+  };
 
   //去重  去空 格式化 触发器列表
   const formatTrigger = (arr) => {
@@ -1240,10 +1706,16 @@ const MapEdit = () => {
     return resultInfo;
   };
 
+  const triggerFormat = (arr) => {
+    const resultInfo = arr.map((item) => {
+      return item.id;
+    });
+    return resultInfo;
+  };
+
   //------------------------------渲染事件--------------------------------
   //加载的资源 文件树
   const renderResourceLoadTree = useMemo(() => {
-    console.log('renderResourceLoadTree');
     let len = 0;
     const elementArr = elementInfo.map((item) => {
       return { title: item.title + '-' + item.id, key: item.id, type: item.type };
@@ -1297,7 +1769,6 @@ const MapEdit = () => {
   }, [mapLoadInfo.title, mainCarInfo.title, elementInfo.length, triggersInfo.length]);
   //文件库
   const renderResourceList = useMemo(() => {
-    console.log('renderResourceList');
     let Resource_list = [];
     if (resourceLibType === RESOURCE_TYPE.MAP) {
       Resource_list = Resource_list_map;
@@ -1330,7 +1801,7 @@ const MapEdit = () => {
         </div>
       );
     });
-  }, [resourceLibType]);
+  }, [resourceLibType, isPlay]);
 
   //触发器列表
   const triggersSelect = useMemo(() => {
@@ -1353,7 +1824,6 @@ const MapEdit = () => {
 
   //加载的信息
   const renderResourceInfo = useMemo(() => {
-    console.log('renderResourceInfo');
     let selectInfo = {};
     if (resourceOperateType === RESOURCE_TYPE.MAP) {
       selectInfo = mapLoadInfo;
@@ -1500,39 +1970,31 @@ const MapEdit = () => {
                   </div>
                   <div>
                     <span className='txt'>速度 : </span>
-                    {index == 0 || selectInfo.type === RESOURCE_TYPE.MAIN_CAR ? (
-                      <span className='txt'>{item.velocity} </span>
-                    ) : (
-                      <span className='val'>
-                        <InputNumber
-                          value={item.velocity}
-                          onBlur={(e) => {
-                            changePropsHandle(e, index, selectInfo.id, 'velocity');
-                          }}
-                        ></InputNumber>
-                      </span>
-                    )}
+                    <span className='val'>
+                      <InputNumber
+                        value={item.velocity}
+                        onBlur={(e) => {
+                          changePropsHandle(e, index, selectInfo.id, 'velocity');
+                        }}
+                      ></InputNumber>
+                    </span>
                   </div>
                   <div>
                     <span className='txt'> 朝向 : </span>
-                    {index == 1 && selectInfo.type === RESOURCE_TYPE.MAIN_CAR ? (
-                      ''
-                    ) : (
-                      <span className='val'>
-                        <InputNumber
-                          value={item.heading}
-                          max={360}
-                          min={-360}
-                          onBlur={(e) => {
-                            changePropsHandle(e, index, selectInfo.id, 'heading');
-                          }}
-                        ></InputNumber>
-                      </span>
-                    )}
+                    <span className='val'>
+                      <InputNumber
+                        value={item.heading}
+                        max={360}
+                        min={-360}
+                        onBlur={(e) => {
+                          changePropsHandle(e, index, selectInfo.id, 'heading');
+                        }}
+                      ></InputNumber>
+                    </span>
                   </div>
                   <div>
                     <span className='txt'> 时间 : </span>
-                    {index === 0 || selectInfo.type === RESOURCE_TYPE.MAIN_CAR ? (
+                    {index === 0 ? (
                       <span className='val'>{item.time}</span>
                     ) : (
                       <span className='val'>
@@ -1659,43 +2121,34 @@ const MapEdit = () => {
         ) : null}
       </React.Fragment>
     );
-  }, [resourceOperateType, currentElementId, mapLoadInfo, mainCarInfo, elementInfo, triggersInfo]);
+  }, [
+    resourceOperateType,
+    currentElementId,
+    mapLoadInfo,
+    mainCarInfo,
+    elementInfo,
+    triggersInfo,
+    isPlay
+  ]);
 
   const caseInfo = JSON.parse(localStorage.caseInfo);
   //ViewState 会锁死视图  initialViewState 初始化视图
   return (
     <div className='map-edit-wrap'>
-      <div className='tool-bar'>
+      <div className='menu-bar'>
         <div className='title'>案例名称：{caseInfo.caseName}</div>
-        <Popconfirm
-          title='确定编辑完成，保存退出吗?'
-          onConfirm={() => {
-            save();
-          }}
-          onCancel={() => {}}
-          okText='确定'
-          cancelText='取消'
-        >
-          <div className='btn'>保存</div>
-        </Popconfirm>
-        {/* <div className='magnet-box' onClick={magnet}>
-          <div className='magnet'>
-            <span className='btn-label'>
-              <svg
-                width='20'
-                height='20'
-                viewBox='0 0 16 16'
-                fill='none'
-                xmlns='http://www.w3.org/2000/svg'
-              >
-                <path
-                  d='M11.227 10.137l-1.217 1.217a3.53 3.53 0 0 1-4.991-4.99l1.217-1.218L4.24 3.15 3.022 4.367a6.353 6.353 0 0 0 8.985 8.984l1.217-1.217-1.997-1.997zm3.484.51a1 1 0 0 1-1.415 0l-.582-.582a1 1 0 0 1 0-1.414l.582-.582a1 1 0 0 1 1.415 0l.582.582a1 1 0 0 1 0 1.414l-.582.582zM6.308 3.66a1 1 0 0 0 1.415 0l.582-.582a1 1 0 0 0 0-1.414l-.582-.582a1 1 0 0 0-1.415 0l-.582.582a1 1 0 0 0 0 1.414l.582.582z'
-                  fill='#5C7582'
-                ></path>
-              </svg>
-            </span>
-          </div>
-        </div> */}
+        <div className='save-btn' onClick={save}>
+          保存
+        </div>
+        <div className='run-btn' onClick={run}>
+          运行案例
+        </div>
+        <div className='exit-btn' onClick={exit}>
+          退出编辑器
+          <span className='txt'>
+            <LoginOutlined />
+          </span>
+        </div>
       </div>
       <div className='content-box'>
         <div className='left-box'>
@@ -1751,6 +2204,15 @@ const MapEdit = () => {
                 onDrop={dropHandle}
               >
                 <div className='tool-bar' ref={inputEl}></div>
+                {isPlay ? (
+                  <React.Fragment>
+                    <div className='play-tip-top-left'></div>
+                    <div className='play-tip-top-right'></div>
+                    <div className='play-tip-bottom-left'></div>
+                    <div className='play-tip-bottom-right'></div>
+                    <div className='play-tip-txt'>播放模式</div>
+                  </React.Fragment>
+                ) : null}
                 <DeckGL
                   initialViewState={{
                     longitude: 0,
@@ -1778,12 +2240,80 @@ const MapEdit = () => {
               </div>
             )}
           </div>
+          <div className='play-box'>
+            <Tooltip placement='top' title={'停止'}>
+              <div className='stop-btn' onClick={stopHandle}>
+                <StopOutlined />
+              </div>
+            </Tooltip>
+            {isPlaying ? (
+              <Tooltip placement='top' title={'暂停'}>
+                <div className='pause-btn' onClick={pauseHandle}>
+                  <PauseCircleOutlined />
+                </div>
+              </Tooltip>
+            ) : (
+              <Tooltip placement='top' title={'播放'}>
+                <div className='play-btn' onClick={playHandle}>
+                  <PlayCircleOutlined />
+                </div>
+              </Tooltip>
+            )}
+          </div>
           <div className='resource-list-box'>
             <div className='resource-list'>{renderResourceList}</div>
           </div>
         </div>
         <div className='right-box'>{renderResourceInfo}</div>
       </div>
+      <Modal
+        title='返回案例库'
+        visible={isModalVisible}
+        okText='确认'
+        cancelText='取消'
+        footer={
+          <div>
+            <Button onClick={modalHandleOkNoSave}>不保存</Button>
+            <Button type='primary' onClick={modalHandleOk}>
+              保存
+            </Button>
+            <Button onClick={modalHandleCancel}>取消</Button>
+          </div>
+        }
+      >
+        <div>返回案例库,是否保存所作修改</div>
+      </Modal>
+      <Modal
+        title='创建任务'
+        className='create-task-modal'
+        visible={isTaskModalVisible}
+        onOk={modalTaskHandleOk}
+        onCancel={modalTaskHandleCancel}
+        okText='确认'
+        cancelText='取消'
+        okButtonProps={{
+          disabled: disabledBtn
+        }}
+      >
+        <div className='create-task-list'>
+          <div className='create-task-item'>
+            任务名称：
+            <input value={taskName || ''} onChange={taskNameChangeHandle} className='input'></input>
+          </div>
+          <div className='create-task-item'>
+            算法类型：
+            <Select defaultValue='请选择' onChange={algorithmChangeHandle} className='select'>
+              {algorithmArr.map((item, index) => {
+                return (
+                  <Option key={index} value={item}>
+                    {item}
+                  </Option>
+                );
+              })}
+            </Select>
+          </div>
+        </div>
+      </Modal>
     </div>
   );
 };

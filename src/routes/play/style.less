@@ -63,8 +63,14 @@
       top: 12px;
       right: 12px;
       display: flex;
+      flex-wrap: wrap-reverse;
+      align-content: space-between;
+      height: 82vh;
+      width: 268px;
       flex-direction: column;
-      box-shadow: 0 0 8px rgba(0, 0, 0, 0.3);
+      .hud-item{
+        flex: 1;
+      }
     }
 
     #hub hr {

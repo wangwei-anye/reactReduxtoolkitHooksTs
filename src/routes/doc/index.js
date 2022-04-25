@@ -28,6 +28,18 @@ const Doc = () => {
           <li>新增地图管理模块，支持小图预览、大图查看</li>
         </ul>
       </div>
+      <div className='small-version'>v1.2 - 2022.04.30</div>
+      <div className='fix-title'>第三版</div>
+      <div className='fix-list'>
+        <ul>
+          <li>文件夹形式的场景库管理系统，支持添加、删除、导入、新建等功能</li>
+          <li>任务集形式的任务管理系统，支持多选、归类等功能</li>
+          <li>新增支持查看、预览YAML场景</li>
+          <li>接入icvos2.0</li>
+          <li>新增chrono动力学模块</li>
+          <li>web端任务状态自动实时同步刷新</li>
+        </ul>
+      </div>
     </div>
   );
 };

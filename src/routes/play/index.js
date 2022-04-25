@@ -128,12 +128,6 @@ class Play extends PureComponent {
             <hr />
             <XVIZPanel log={log} name='Camera' />
             <hr />
-            {/* <Form
-            data={APP_SETTINGS}
-            values={this.state.settings}
-            onChange={this._onSettingsChange}
-          />
-          <StreamSettingsPanel log={log} /> */}
           </div>
           <div id='log-panel'>
             <div id='map-view' style={{ backgroundColor: 'lightgray' }}>
@@ -147,28 +141,59 @@ class Play extends PureComponent {
                 customLayers={layers}
               />
               <div id='hud'>
-                <TurnSignalWidget log={log} streamName='/vehicle/turn_signal' />
-                <hr />
-                <TrafficLightWidget log={log} streamName='/vehicle/traffic_light' />
-                <hr />
+                {/* 转向 箭头 */}
+                {/* <TurnSignalWidget log={log} streamName='/vehicle/turn_signal' /> */}
+                {/* 红绿灯 */}
+                {/* <TrafficLightWidget log={log} streamName='/vehicle/traffic_light' /> */}
+                {/* 仪表盘 加速度 */}
                 <MeterWidget
                   log={log}
                   streamName='/vehicle/acceleration'
                   style={{
                     arcRadius: 50
                   }}
+                  className='hud-item'
                   label='Acceleration'
                   min={-4}
                   max={4}
                 />
                 <hr />
+                {/* 仪表盘 速度 */}
                 <MeterWidget
                   log={log}
                   streamName='/vehicle/velocity'
                   label='Speed'
                   getWarning={(x) => (x > 6 ? 'FAST' : '')}
+                  className='hud-item'
                   min={0}
                   max={20}
+                />
+                <hr />
+                <MeterWidget
+                  log={log}
+                  streamName='/vehicle/throttle'
+                  className='hud-item'
+                  label='throttle'
+                  min={0}
+                  max={100}
+                />
+                <hr />
+                <MeterWidget
+                  log={log}
+                  streamName='/vehicle/brake'
+                  className='hud-item'
+                  label='brake'
+                  min={0}
+                  max={100}
+                />
+                <hr />
+                <MeterWidget
+                  log={log}
+                  streamName='/vehicle/steering'
+                  className='hud-item'
+                  label='steering'
+                  min={-100}
+                  max={100}
                 />
               </div>
             </div>

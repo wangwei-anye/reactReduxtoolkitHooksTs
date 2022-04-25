@@ -4,7 +4,7 @@
   display: flex;
   overflow: hidden;
   flex-direction: column;
-  .tool-bar {
+  .menu-bar {
     flex: 0 0 36px;
     border-bottom: 1px solid #ccc;
     text-align: center;
@@ -18,66 +18,28 @@
       border-right: 1px solid #ccc;
       box-sizing: border-box;
     }
-    .btn {
+    .save-btn {
       width: 100px;
       line-height: 36px;
       float: left;
       border-right: 1px solid #ccc;
       cursor: pointer;
     }
-    .magnet-box {
-      border-right: 1px solid #ccc;
-      float: left;
+    .run-btn{
       width: 100px;
+      line-height: 36px;
+      float: left;
+      border-right: 1px solid #ccc;
       cursor: pointer;
-      .magnet {
-        -webkit-font-smoothing: antialiased;
-        border: 0;
-        cursor: pointer;
-        display: inline-flex;
-        outline: 0;
-        position: relative;
-        align-items: center;
-        user-select: none;
-        vertical-align: middle;
-        justify-content: center;
-        text-decoration: none;
-        background-color: transparent;
-        -webkit-appearance: none;
-        -webkit-tap-highlight-color: transparent;
-        color: #5c7582;
-        font-size: 13px;
-        box-sizing: border-box;
-        min-height: 30px;
-        transition: background-color 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms,
-          box-shadow 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms,
-          border 250ms cubic-bezier(0.4, 0, 0.2, 1) 0ms;
-        font-family: Source Han Sans CN;
-        font-weight: 500;
-        line-height: 1;
-        border-radius: 4px;
-        text-transform: none;
-        height: 33px;
-        margin: 0;
-        padding: 0;
-        min-width: 40px;
-        .btn-label {
-          -webkit-font-smoothing: antialiased;
-          cursor: pointer;
-          user-select: none;
-          -webkit-tap-highlight-color: transparent;
-          color: #5c7582;
-          font-size: 13px;
-          font-family: Source Han Sans CN;
-          font-weight: 500;
-          line-height: 1;
-          text-transform: none;
-          box-sizing: inherit;
-          width: 100%;
-          display: inherit;
-          align-items: inherit;
-          justify-content: inherit;
-        }
+    }
+    .exit-btn{
+      width: 120px;
+      line-height: 36px;
+      float: right;
+      border-left: 1px solid #ccc;
+      cursor: pointer;
+      .txt{
+        margin-left: 10px;
       }
     }
   }
@@ -120,11 +82,85 @@
             top: 0;
             z-index: 100;
           }
+          .play-tip-top-left{
+            left: 0;
+            width: 50px;
+            top: 0;
+            height: 50px;
+            z-index: 999;
+            position: absolute;
+            border-left: 6px solid #31C67E;
+            border-top: 6px solid #31C67E
+          }
+          .play-tip-top-right{
+            right: 0;
+            width: 50px;
+            top: 0;
+            height: 50px;
+            z-index: 999;
+            position: absolute;
+            border-right: 6px solid #31C67E;
+            border-top: 6px solid #31C67E
+          }
+          .play-tip-bottom-left{
+            left: 0;
+            width: 50px;
+            bottom: 0;
+            height: 50px;
+            z-index: 999;
+            position: absolute;
+            border-left: 6px solid #31C67E;
+            border-bottom: 6px solid #31C67E
+          }
+          .play-tip-bottom-right{
+            right: 0;
+            width: 50px;
+            bottom: 0;
+            height: 50px;
+            z-index: 999;
+            position: absolute;
+            border-right: 6px solid #31C67E;
+            border-bottom: 6px solid #31C67E
+          }
+          .play-tip-txt{
+            left: 10px;
+            width: 100px;
+            bottom: 10px;
+            height: 30px;
+            line-height: 30px;
+            text-align: center;
+            color: white;
+            z-index: 999;
+            position: absolute;
+            background-color: #31C67E;
+            border-radius: 20px;
+          }
           overflow: hidden;
           height: 100%;
           display: block;
           box-sizing: border-box;
           position: relative; //地图的超出部分才能隐藏
+        }
+      }
+      .play-box{
+        flex: 0 0 30px;
+        border-top: 1px solid #ccc;
+        text-align: center;
+        .stop-btn{
+          font-size: 20px;
+          display: inline-block;
+          cursor: pointer;
+          margin-right: 20px;
+        }
+        .pause-btn{
+          font-size: 20px;
+          display: inline-block;
+          cursor: pointer;
+        }
+        .play-btn{
+          font-size: 20px;
+          display: inline-block;
+          cursor: pointer;
         }
       }
       .resource-list-box {

@@ -11,7 +11,9 @@ import {
 } from '@ant-design/icons';
 import {} from './slice';
 import { saveApi } from '@/services/mapEdit';
-import { createTaskApi, createCaseApi, getAlgorithm } from '@/services/caseLib';
+import { deleteCaseApi, getAlgorithm } from '@/services/caseLib';
+import { createTaskApi } from '@/services/task';
+import { download } from '@/utils/tools';
 import { DEFAULT_PAGE_SIZE } from '@/constants';
 
 import './index.less';
@@ -75,13 +77,69 @@ const caseBox = (props, ref) => {
   }
 
   const onSelectChange = (selectedRowKeys) => {
-    console.log('selectedRowKeys changed: ', selectedRowKeys);
     setSelectedRowKeys(selectedRowKeys);
   };
 
   const rowSelection = {
     selectedRowKeys,
     onChange: onSelectChange
+  };
+
+  const deleteHandle = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.info('请选择案例');
+      return;
+    }
+    const { data } = await deleteCaseApi({
+      ids: selectedRowKeys.join(',')
+    });
+    if (data.code === 200) {
+      message.success('删除成功!');
+      refreshHandle();
+    }
+  };
+
+  const exportHandle = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.info('请选择案例');
+      return;
+    }
+    for (let i = 0; i < props.listData.records.length; i++) {
+      if (selectedRowKeys.includes(props.listData.records[i].id)) {
+        download(
+          `${props.listData.records[i].name}.${props.listData.records[i].type}`,
+          props.listData.records[i].caseFileUrl
+        );
+      }
+    }
+  };
+
+  const editHandle = async () => {
+    if (selectedRowKeys.length === 0) {
+      message.info('请选择案例');
+      return;
+    }
+    if (selectedRowKeys.length > 1) {
+      message.info('一次只能编辑一个案例');
+      return;
+    }
+    for (let i = 0; i < props.listData.records.length; i++) {
+      if (selectedRowKeys.includes(props.listData.records[i].id)) {
+        if (props.listData.records[i].type !== 'yaml') {
+          message.info('只能编辑yaml文件');
+          return;
+        }
+        localStorage.caseType = 'edit';
+        localStorage.caseInfo = JSON.stringify({
+          id: props.listData.records[i].id,
+          caseName: props.listData.records[i].name,
+          caseTag: props.listData.records[i].tags,
+          menuId: props.menuId
+        });
+        localStorage.caseData = props.listData.records[i].caseFileUrl;
+        window.open('./map-edit');
+      }
+    }
   };
 
   const run = () => {
@@ -115,9 +173,9 @@ const caseBox = (props, ref) => {
     setDisabledBtn(false);
     if (data.code === 200) {
       message.success('创建成功!');
-      history.push('/task-list');
       setSelectedRowKeys([]);
       setIsTaskModalVisible(false);
+      history.push('/task-list');
     }
   };
 
@@ -143,25 +201,10 @@ const caseBox = (props, ref) => {
     const result = Object.assign({}, caseInfo, {
       menuId: props.menuId
     });
+    localStorage.caseType = 'create';
     localStorage.caseInfo = JSON.stringify(result);
-    // if (!caseInfo.caseTag) {
-    //   message.info('请输入案例标签');
-    //   return;
-    // }
-    // if (!caseInfo.caseDes) {
-    //   message.info('请输入案例备注');
-    //   return;
-    // }
     window.open('./map-edit');
     setIsCaseModalVisible(false);
-    // const { data } = await createCaseApi({
-    //   menuId: props.menuId[0],
-    //   name: caseInfo.caseName
-    // });
-    // if (data.code === 200) {
-    //   message.success('创建成功!');
-    //   setIsCaseModalVisible(false);
-    // }
   };
 
   const modalCaseHandleCancel = () => {
@@ -217,11 +260,9 @@ const caseBox = (props, ref) => {
 
   const refUpload = useRef();
   const importHandle = () => {
-    console.log(1111111);
     refUpload.current.click();
   };
   const uploadHandle = async (e) => {
-    console.log(e.target.files);
     const formData = new FormData();
     formData.append('menuId', props.menuId);
     formData.append('type', 'xosc');
@@ -237,13 +278,23 @@ const caseBox = (props, ref) => {
     <div className='case-box-wrap'>
       <div className='menu-box'>
         <div className='item-btn'>
-          <Button type='primary' onClick={addCase} icon={<PlusOutlined />}>
+          <Button
+            type='primary'
+            disabled={props.readOnly}
+            onClick={addCase}
+            icon={<PlusOutlined />}
+          >
             新建案例
           </Button>
         </div>
         <div className='item-list'>
           <div className='item' onClick={importHandle}>
-            <Button type='primary' icon={<DownloadOutlined />} size={20}></Button>
+            <Button
+              type='primary'
+              disabled={props.readOnly}
+              icon={<DownloadOutlined />}
+              size={20}
+            ></Button>
             <div>导入</div>
           </div>
           <input
@@ -254,15 +305,32 @@ const caseBox = (props, ref) => {
             type='file'
           ></input>
           <div className='item'>
-            <Button type='primary' disabled icon={<ExportOutlined />} size={20}></Button>
+            <Button
+              type='primary'
+              onClick={exportHandle}
+              icon={<ExportOutlined />}
+              size={20}
+            ></Button>
             <div>导出</div>
           </div>
           <div className='item'>
-            <Button type='primary' disabled icon={<EditOutlined />} size={20}></Button>
+            <Button
+              type='primary'
+              disabled={props.readOnly}
+              onClick={editHandle}
+              icon={<EditOutlined />}
+              size={20}
+            ></Button>
             <div>编辑</div>
           </div>
           <div className='item'>
-            <Button type='primary' disabled icon={<DeleteOutlined />} size={20}></Button>
+            <Button
+              type='primary'
+              onClick={deleteHandle}
+              disabled={props.readOnly}
+              icon={<DeleteOutlined />}
+              size={20}
+            ></Button>
             <div>删除</div>
           </div>
           <div className='item'>
@@ -322,6 +390,7 @@ const caseBox = (props, ref) => {
             pageSize: DEFAULT_PAGE_SIZE,
             position: ['bottomCenter'],
             total: props.listData.total,
+            showSizeChanger: false,
             onChange: paginationChangeHandle
           }}
           columns={columns}
@@ -347,7 +416,7 @@ const caseBox = (props, ref) => {
             <input value={taskName || ''} onChange={taskNameChangeHandle} className='input'></input>
           </div>
           <div className='create-task-item'>
-            算法类型：{console.log()}
+            算法类型：
             <Select defaultValue='请选择' onChange={algorithmChangeHandle} className='select'>
               {algorithmArr.map((item, index) => {
                 return (
@@ -379,7 +448,7 @@ const caseBox = (props, ref) => {
               className='input'
             ></input>
           </div>
-          {/* <div className='create-task-item'>
+          <div className='create-task-item'>
             案例标签：
             <input
               value={caseInfo.caseTag || ''}
@@ -387,7 +456,7 @@ const caseBox = (props, ref) => {
               className='input'
             ></input>
           </div>
-          <div className='create-task-item'>
+          {/*  <div className='create-task-item'>
             案例备注：
             <input
               value={caseInfo.caseDes || ''}

@@ -64,8 +64,7 @@ export const createCarIconLayer = (id, data, clickCallback) => {
     }),
     sizeUnits: 'meters',
     onClick: (d) => {
-      if (d && d.object) {
-        console.log(d.object);
+      if (d && d.object && clickCallback) {
         clickCallback(d.object.type, d.object.id, d.object.index);
       }
     },

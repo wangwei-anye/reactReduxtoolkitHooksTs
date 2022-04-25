@@ -9,3 +9,11 @@ export function login(query) {
   };
   return request(`${API_BASE}/user/login`, options);
 }
+
+export function register(query) {
+  const options = {
+    method: 'POST',
+    body: JSON.stringify(query)
+  };
+  return request(`${API_BASE}/user/register`, options);
+}
