@@ -1,0 +1,50 @@
+.build-wrap {
+  padding: 24px;
+  .search-box {
+    display: flex;
+    align-items: center;
+    height: 120px;
+    .tips-box {
+      flex: 0 0 350px;
+      margin-right: 30px;
+      height: 84px;
+      border-radius: 5px;
+      box-shadow: 0 2px 5px #ccc;
+      display: flex;
+      padding: 15px;
+      .divider {
+        height: 50px !important;
+        background-color: '#ccc' !important;
+        width: 4px !important;
+      }
+      .box {
+        flex: auto;
+        &:nth-child(1) {
+          color: rgb(48, 145, 242);
+        }
+        &:nth-child(2) {
+          color: rgb(248, 170, 67);
+        }
+        .num {
+          font-size: 20px;
+        }
+      }
+    }
+    .item-list {
+      flex: 0 0 300px;
+      display: flex;
+      .item {
+        flex: 1;
+        div {
+          padding-left: 2px;
+        }
+      }
+    }
+    .item-list2 {
+      flex: 0 0 180px;
+    }
+    .input-box {
+      flex: 0 0 300px;
+    }
+  }
+}

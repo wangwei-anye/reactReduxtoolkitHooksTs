@@ -24,6 +24,7 @@ import Icon_element_bicycle from '../../../assets/images/obstacle_bicycle.png';
 import Icon_element_bicycle2 from '../../../assets/images/obstacle_bicycle2.png';
 import Icon_element_bicycle2_rotate from '../../../assets/images/obstacle_bicycle2_rotate.png';
 import Icon_element_trigger from '../../../assets/images/trigger.png';
+import Icon_traffic_flow from '../../../assets/images/trafficflow.png';
 //资源类型
 export const RESOURCE_TYPE = {
   MAP: 'resource_map',
@@ -34,7 +35,8 @@ export const RESOURCE_TYPE = {
   ELEMENT_ANIMAL: 'resource_element_animal',
   ELEMENT_BICYCLE: 'resource_element_bicycle',
   TRIGGERS: 'triggers',
-  ROTATE_POINT: 'rotate_point' //旋转点
+  ROTATE_POINT: 'rotate_point', //旋转点
+  TRAFFIC_FLOW: 'trafficflow'
 };
 //加载到地图上的资源
 export const Resource_load_tree = [
@@ -70,11 +72,21 @@ export const Resource_lib_tree = [
   {
     title: '触发器',
     key: RESOURCE_TYPE.TRIGGERS
+  },
+  {
+    title: '交通流',
+    key: RESOURCE_TYPE.TRAFFIC_FLOW
   }
 ];
 
 //资源列表
 export const Resource_list_map = [
+  {
+    title: 'straight_2000m',
+    key: 'map_straight_2000m',
+    url: 'straight_2000m.xodr',
+    icon: Icon_map11
+  },
   {
     title: 'crest-curve',
     key: 'map1',
@@ -128,12 +140,6 @@ export const Resource_list_map = [
     key: 'map10',
     url: 'soderleden.xodr',
     icon: Icon_map10
-  },
-  {
-    title: 'straight_500m_signs',
-    key: 'map11',
-    url: 'straight_500m_signs.xodr',
-    icon: Icon_map11
   }
 ];
 export const Resource_list_main_car = [
@@ -168,7 +174,7 @@ export const Resource_list_element_car = [
     icon2: Icon_element_car,
     icon_select: Icon_element_car_rotate,
     routes: [],
-    actImmediately: false,
+    actImmediately: true,
     triggers: [],
     w: 377, //图片显示大小  图片真实宽高
     h: 180,
@@ -188,7 +194,7 @@ export const Resource_list_element_people = [
     icon2: Icon_element_people2,
     icon_select: Icon_element_people2_rotate,
     routes: [],
-    actImmediately: false,
+    actImmediately: true,
     triggers: [],
     w: 50,
     h: 50,
@@ -209,7 +215,7 @@ export const Resource_list_element_animal = [
     icon2: Icon_element_animal2,
     icon_select: Icon_element_animal2_rotate,
     routes: [],
-    actImmediately: false,
+    actImmediately: true,
     triggers: [],
     w: 50,
     h: 50,
@@ -230,7 +236,7 @@ export const Resource_list_element_bicycle = [
     icon2: Icon_element_bicycle2,
     icon_select: Icon_element_bicycle2_rotate,
     routes: [],
-    actImmediately: false,
+    actImmediately: true,
     triggers: [],
     w: 100,
     h: 50,
@@ -248,5 +254,22 @@ export const Resource_list_triggers = [
     size: { width: 8, height: 8 },
     pos: [],
     triggeredId: []
+  }
+];
+
+export const Resource_traffic_flow = [
+  {
+    title: '交通流',
+    id: -1,
+    type: RESOURCE_TYPE.TRAFFIC_FLOW,
+    icon: Icon_traffic_flow,
+    proportion: {
+      private: 33,
+      business: 33,
+      engineering: 34
+    },
+    vehicle: 20,
+    pedestrian: 20,
+    bicycle: 20
   }
 ];

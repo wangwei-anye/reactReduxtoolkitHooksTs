@@ -1,9 +1,9 @@
 import { PathLayer, IconLayer } from '@deck.gl/layers';
 import { COORDINATE_SYSTEM } from '@deck.gl/core';
 import { PathStyleExtension } from '@deck.gl/extensions';
-import { getIconScale } from './utils';
+import { getIconScale, getAngleByTwoPoint } from './utils';
 //画地图
-export const createMapLayer = (mapData, showReference = true) => {
+export const createMapLayer = (mapData, isShowArrow = true) => {
   if (!mapData) {
     return [];
   }
@@ -13,7 +13,7 @@ export const createMapLayer = (mapData, showReference = true) => {
     id: 'path-layer-solid',
     rounded: true,
     data: mapData.solidLines,
-    getColor: [255, 255, 255, 255],
+    getColor: (d) => d.color, //[255, 255, 255, 255],
     getWidth: (d) => 2,
     widthUnits: 'pixels',
     pickable: true,
@@ -25,7 +25,7 @@ export const createMapLayer = (mapData, showReference = true) => {
     id: 'path-layer-broken',
     rounded: true,
     data: mapData.brokenLines,
-    getColor: [255, 255, 255, 255],
+    getColor: (d) => d.color, //[255, 255, 255, 255],
     getWidth: 2,
     widthUnits: 'pixels',
     getDashArray: [30, 60], //虚线   实线/总长度
@@ -48,6 +48,36 @@ export const createMapLayer = (mapData, showReference = true) => {
     pickable: true,
     zIndex: -1
   });
+  if (isShowArrow) {
+    for (let i = 0; i < mapData.arrowLayer.length; i++) {
+      mapData.arrowLayer[i].angle = getAngleByTwoPoint(
+        mapData.arrowLayer[i].angleArr[0],
+        mapData.arrowLayer[i].angleArr[1]
+      );
+    }
+    const arrowLayer = new IconLayer({
+      coordinateSystem: COORDINATE_SYSTEM.METER_OFFSETS,
+      coordinateOrigin: [0, 0, 0],
+      id: 'arrow-layer-reference',
+      data: mapData.arrowLayer,
+      getIcon: (d) => ({
+        url: d.icon,
+        anchorY: d.anchorY,
+        width: d.w,
+        height: d.h
+      }),
+      sizeUnits: 'meters',
+      getPosition: (d) => d.coordinates,
+      getSize: (d) => {
+        return 1;
+      },
+      getAngle: (d) => {
+        return parseInt(d.angle - 90);
+      },
+      zIndex: 20
+    });
+    return [referenceLayer, solidLayer, brokenLayer, arrowLayer];
+  }
   return [referenceLayer, solidLayer, brokenLayer];
 };
 //画车 和 障碍物

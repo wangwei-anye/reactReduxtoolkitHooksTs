@@ -35,7 +35,7 @@ export function renameMenuDataApi(query) {
 
 export function getListApi(query) {
   const querystring = qs.stringify(query);
-  return request(`${API_BASE}/cases/getListWithPage?${querystring}`);
+  return request(`${API_BASE}/cases/searchListWithPage?${querystring}`);
 }
 
 export function getAlgorithm() {
@@ -56,4 +56,41 @@ export function deleteCaseApi(query) {
     body: JSON.stringify(query)
   };
   return request(`${API_BASE}/cases/del`, options);
+}
+
+//快速测试集
+export function getQuickTestMenuDataApi() {
+  const querystring = qs.stringify({
+    id: '1'
+  });
+  return request(`${API_BASE}/quick-test/getChildrenMenu?${querystring}`);
+}
+
+export function createQuickTestMenuDataApi(query) {
+  const options = {
+    method: 'POST',
+    body: JSON.stringify(query)
+  };
+  return request(`${API_BASE}/quick-test/addMenu`, options);
+}
+
+export function getQuickTestListApi(query) {
+  const querystring = qs.stringify(query);
+  return request(`${API_BASE}/quick-test/getListWithPage?${querystring}`);
+}
+
+export function addToTestApi(query) {
+  const options = {
+    method: 'POST',
+    body: JSON.stringify(query)
+  };
+  return request(`${API_BASE}/quick-test/addToTest`, options);
+}
+
+export function manageTestApi(query) {
+  const options = {
+    method: 'POST',
+    body: JSON.stringify(query)
+  };
+  return request(`${API_BASE}/quick-test/manageTest`, options);
 }

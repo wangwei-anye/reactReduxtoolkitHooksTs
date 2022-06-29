@@ -67,7 +67,7 @@ export default function request(url, options) {
     .then((data) => {
       if (data.code !== 200) {
         message.destroy();
-        message.error(data.msg || '服务异常');
+        message.error(data.msg || '服务异常', 3);
       }
       if (data.code === 401) {
         window.location.href = '/login';
@@ -75,7 +75,7 @@ export default function request(url, options) {
       return { data };
     })
     .catch((err) => {
-      message.error('服务异常');
+      message.error('服务异常', 3);
       return { err };
     });
 }

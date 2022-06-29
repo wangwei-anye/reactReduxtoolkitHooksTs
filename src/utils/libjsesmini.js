@@ -22,6 +22,7 @@ export const libjsesmini = () => {
     };
     var ENVIRONMENT_IS_WEB = true;
     var ENVIRONMENT_IS_WORKER = false;
+    var ENVIRONMENT_IS_NODE = false;
     var scriptDirectory = '';
     function locateFile(path) {
       if (Module['locateFile']) {
@@ -382,6 +383,7 @@ export const libjsesmini = () => {
     }
     function initRuntime() {
       runtimeInitialized = true;
+      SOCKFS.root = FS.mount(SOCKFS, {}, null);
       if (!Module['noFSInit'] && !FS.init.initialized) FS.init();
       FS.ignorePermissions = false;
       TTY.init();
@@ -498,10 +500,10 @@ export const libjsesmini = () => {
       function receiveInstance(instance, module) {
         var exports = instance.exports;
         Module['asm'] = exports;
-        wasmMemory = Module['asm']['N'];
+        wasmMemory = Module['asm']['Q'];
         updateGlobalBufferAndViews(wasmMemory.buffer);
-        wasmTable = Module['asm']['P'];
-        addOnInit(Module['asm']['O']);
+        wasmTable = Module['asm']['S'];
+        addOnInit(Module['asm']['R']);
         removeRunDependency('wasm-instantiate');
       }
       addRunDependency('wasm-instantiate');
@@ -655,9 +657,17 @@ export const libjsesmini = () => {
       uncaughtExceptionCount++;
       throw ptr;
     }
-    function setErrNo(value) {
-      HEAP32[___errno_location() >> 2] = value;
-      return value;
+    function getRandomDevice() {
+      if (typeof crypto === 'object' && typeof crypto['getRandomValues'] === 'function') {
+        var randomBuffer = new Uint8Array(1);
+        return function () {
+          crypto.getRandomValues(randomBuffer);
+          return randomBuffer[0];
+        };
+      } else
+        return function () {
+          abort('randomDevice');
+        };
     }
     var PATH = {
       splitPath: function (filename) {
@@ -733,18 +743,6 @@ export const libjsesmini = () => {
         return PATH.normalize(l + '/' + r);
       }
     };
-    function getRandomDevice() {
-      if (typeof crypto === 'object' && typeof crypto['getRandomValues'] === 'function') {
-        var randomBuffer = new Uint8Array(1);
-        return function () {
-          crypto.getRandomValues(randomBuffer);
-          return randomBuffer[0];
-        };
-      } else
-        return function () {
-          abort('randomDevice');
-        };
-    }
     var PATH_FS = {
       resolve: function () {
         var resolvedPath = '',
@@ -918,6 +916,9 @@ export const libjsesmini = () => {
         }
       }
     };
+    function zeroMemory(address, size) {
+      HEAPU8.fill(0, address, address + size);
+    }
     function mmapAlloc(size) {
       abort();
     }
@@ -2755,6 +2756,700 @@ export const libjsesmini = () => {
         openRequest.onerror = onerror;
       }
     };
+    var SOCKFS = {
+      mount: function (mount) {
+        Module['websocket'] =
+          Module['websocket'] && 'object' === typeof Module['websocket'] ? Module['websocket'] : {};
+        Module['websocket']._callbacks = {};
+        Module['websocket']['on'] = function (event, callback) {
+          if ('function' === typeof callback) {
+            this._callbacks[event] = callback;
+          }
+          return this;
+        };
+        Module['websocket'].emit = function (event, param) {
+          if ('function' === typeof this._callbacks[event]) {
+            this._callbacks[event].call(this, param);
+          }
+        };
+        return FS.createNode(null, '/', 16384 | 511, 0);
+      },
+      createSocket: function (family, type, protocol) {
+        type &= ~526336;
+        var streaming = type == 1;
+        if (protocol) {
+          assert(streaming == (protocol == 6));
+        }
+        var sock = {
+          family: family,
+          type: type,
+          protocol: protocol,
+          server: null,
+          error: null,
+          peers: {},
+          pending: [],
+          recv_queue: [],
+          sock_ops: SOCKFS.websocket_sock_ops
+        };
+        var name = SOCKFS.nextname();
+        var node = FS.createNode(SOCKFS.root, name, 49152, 0);
+        node.sock = sock;
+        var stream = FS.createStream({
+          path: name,
+          node: node,
+          flags: 2,
+          seekable: false,
+          stream_ops: SOCKFS.stream_ops
+        });
+        sock.stream = stream;
+        return sock;
+      },
+      getSocket: function (fd) {
+        var stream = FS.getStream(fd);
+        if (!stream || !FS.isSocket(stream.node.mode)) {
+          return null;
+        }
+        return stream.node.sock;
+      },
+      stream_ops: {
+        poll: function (stream) {
+          var sock = stream.node.sock;
+          return sock.sock_ops.poll(sock);
+        },
+        ioctl: function (stream, request, varargs) {
+          var sock = stream.node.sock;
+          return sock.sock_ops.ioctl(sock, request, varargs);
+        },
+        read: function (stream, buffer, offset, length, position) {
+          var sock = stream.node.sock;
+          var msg = sock.sock_ops.recvmsg(sock, length);
+          if (!msg) {
+            return 0;
+          }
+          buffer.set(msg.buffer, offset);
+          return msg.buffer.length;
+        },
+        write: function (stream, buffer, offset, length, position) {
+          var sock = stream.node.sock;
+          return sock.sock_ops.sendmsg(sock, buffer, offset, length);
+        },
+        close: function (stream) {
+          var sock = stream.node.sock;
+          sock.sock_ops.close(sock);
+        }
+      },
+      nextname: function () {
+        if (!SOCKFS.nextname.current) {
+          SOCKFS.nextname.current = 0;
+        }
+        return 'socket[' + SOCKFS.nextname.current++ + ']';
+      },
+      websocket_sock_ops: {
+        createPeer: function (sock, addr, port) {
+          var ws;
+          if (typeof addr === 'object') {
+            ws = addr;
+            addr = null;
+            port = null;
+          }
+          if (ws) {
+            if (ws._socket) {
+              addr = ws._socket.remoteAddress;
+              port = ws._socket.remotePort;
+            } else {
+              var result = /ws[s]?:\/\/([^:]+):(\d+)/.exec(ws.url);
+              if (!result) {
+                throw new Error('WebSocket URL must be in the format ws(s)://address:port');
+              }
+              addr = result[1];
+              port = parseInt(result[2], 10);
+            }
+          } else {
+            try {
+              var runtimeConfig = Module['websocket'] && 'object' === typeof Module['websocket'];
+              var url = 'ws:#'.replace('#', '//');
+              if (runtimeConfig) {
+                if ('string' === typeof Module['websocket']['url']) {
+                  url = Module['websocket']['url'];
+                }
+              }
+              if (url === 'ws://' || url === 'wss://') {
+                var parts = addr.split('/');
+                url = url + parts[0] + ':' + port + '/' + parts.slice(1).join('/');
+              }
+              var subProtocols = 'binary';
+              if (runtimeConfig) {
+                if ('string' === typeof Module['websocket']['subprotocol']) {
+                  subProtocols = Module['websocket']['subprotocol'];
+                }
+              }
+              var opts = undefined;
+              if (subProtocols !== 'null') {
+                subProtocols = subProtocols.replace(/^ +| +$/g, '').split(/ *, */);
+                opts = ENVIRONMENT_IS_NODE ? { protocol: subProtocols.toString() } : subProtocols;
+              }
+              if (runtimeConfig && null === Module['websocket']['subprotocol']) {
+                subProtocols = 'null';
+                opts = undefined;
+              }
+              var WebSocketConstructor;
+              {
+                WebSocketConstructor = WebSocket;
+              }
+              ws = new WebSocketConstructor(url, opts);
+              ws.binaryType = 'arraybuffer';
+            } catch (e) {
+              throw new FS.ErrnoError(23);
+            }
+          }
+          var peer = { addr: addr, port: port, socket: ws, dgram_send_queue: [] };
+          SOCKFS.websocket_sock_ops.addPeer(sock, peer);
+          SOCKFS.websocket_sock_ops.handlePeerEvents(sock, peer);
+          if (sock.type === 2 && typeof sock.sport !== 'undefined') {
+            peer.dgram_send_queue.push(
+              new Uint8Array([
+                255,
+                255,
+                255,
+                255,
+                'p'.charCodeAt(0),
+                'o'.charCodeAt(0),
+                'r'.charCodeAt(0),
+                't'.charCodeAt(0),
+                (sock.sport & 65280) >> 8,
+                sock.sport & 255
+              ])
+            );
+          }
+          return peer;
+        },
+        getPeer: function (sock, addr, port) {
+          return sock.peers[addr + ':' + port];
+        },
+        addPeer: function (sock, peer) {
+          sock.peers[peer.addr + ':' + peer.port] = peer;
+        },
+        removePeer: function (sock, peer) {
+          delete sock.peers[peer.addr + ':' + peer.port];
+        },
+        handlePeerEvents: function (sock, peer) {
+          var first = true;
+          var handleOpen = function () {
+            Module['websocket'].emit('open', sock.stream.fd);
+            try {
+              var queued = peer.dgram_send_queue.shift();
+              while (queued) {
+                peer.socket.send(queued);
+                queued = peer.dgram_send_queue.shift();
+              }
+            } catch (e) {
+              peer.socket.close();
+            }
+          };
+          function handleMessage(data) {
+            if (typeof data === 'string') {
+              var encoder = new TextEncoder();
+              data = encoder.encode(data);
+            } else {
+              assert(data.byteLength !== undefined);
+              if (data.byteLength == 0) {
+                return;
+              } else {
+                data = new Uint8Array(data);
+              }
+            }
+            var wasfirst = first;
+            first = false;
+            if (
+              wasfirst &&
+              data.length === 10 &&
+              data[0] === 255 &&
+              data[1] === 255 &&
+              data[2] === 255 &&
+              data[3] === 255 &&
+              data[4] === 'p'.charCodeAt(0) &&
+              data[5] === 'o'.charCodeAt(0) &&
+              data[6] === 'r'.charCodeAt(0) &&
+              data[7] === 't'.charCodeAt(0)
+            ) {
+              var newport = (data[8] << 8) | data[9];
+              SOCKFS.websocket_sock_ops.removePeer(sock, peer);
+              peer.port = newport;
+              SOCKFS.websocket_sock_ops.addPeer(sock, peer);
+              return;
+            }
+            sock.recv_queue.push({ addr: peer.addr, port: peer.port, data: data });
+            Module['websocket'].emit('message', sock.stream.fd);
+          }
+          if (ENVIRONMENT_IS_NODE) {
+            peer.socket.on('open', handleOpen);
+            peer.socket.on('message', function (data, flags) {
+              if (!flags.binary) {
+                return;
+              }
+              handleMessage(new Uint8Array(data).buffer);
+            });
+            peer.socket.on('close', function () {
+              Module['websocket'].emit('close', sock.stream.fd);
+            });
+            peer.socket.on('error', function (error) {
+              sock.error = 14;
+              Module['websocket'].emit('error', [
+                sock.stream.fd,
+                sock.error,
+                'ECONNREFUSED: Connection refused'
+              ]);
+            });
+          } else {
+            peer.socket.onopen = handleOpen;
+            peer.socket.onclose = function () {
+              Module['websocket'].emit('close', sock.stream.fd);
+            };
+            peer.socket.onmessage = function peer_socket_onmessage(event) {
+              handleMessage(event.data);
+            };
+            peer.socket.onerror = function (error) {
+              sock.error = 14;
+              Module['websocket'].emit('error', [
+                sock.stream.fd,
+                sock.error,
+                'ECONNREFUSED: Connection refused'
+              ]);
+            };
+          }
+        },
+        poll: function (sock) {
+          if (sock.type === 1 && sock.server) {
+            return sock.pending.length ? 64 | 1 : 0;
+          }
+          var mask = 0;
+          var dest =
+            sock.type === 1
+              ? SOCKFS.websocket_sock_ops.getPeer(sock, sock.daddr, sock.dport)
+              : null;
+          if (
+            sock.recv_queue.length ||
+            !dest ||
+            (dest && dest.socket.readyState === dest.socket.CLOSING) ||
+            (dest && dest.socket.readyState === dest.socket.CLOSED)
+          ) {
+            mask |= 64 | 1;
+          }
+          if (!dest || (dest && dest.socket.readyState === dest.socket.OPEN)) {
+            mask |= 4;
+          }
+          if (
+            (dest && dest.socket.readyState === dest.socket.CLOSING) ||
+            (dest && dest.socket.readyState === dest.socket.CLOSED)
+          ) {
+            mask |= 16;
+          }
+          return mask;
+        },
+        ioctl: function (sock, request, arg) {
+          switch (request) {
+            case 21531:
+              var bytes = 0;
+              if (sock.recv_queue.length) {
+                bytes = sock.recv_queue[0].data.length;
+              }
+              HEAP32[arg >> 2] = bytes;
+              return 0;
+            default:
+              return 28;
+          }
+        },
+        close: function (sock) {
+          if (sock.server) {
+            try {
+              sock.server.close();
+            } catch (e) {}
+            sock.server = null;
+          }
+          var peers = Object.keys(sock.peers);
+          for (var i = 0; i < peers.length; i++) {
+            var peer = sock.peers[peers[i]];
+            try {
+              peer.socket.close();
+            } catch (e) {}
+            SOCKFS.websocket_sock_ops.removePeer(sock, peer);
+          }
+          return 0;
+        },
+        bind: function (sock, addr, port) {
+          if (typeof sock.saddr !== 'undefined' || typeof sock.sport !== 'undefined') {
+            throw new FS.ErrnoError(28);
+          }
+          sock.saddr = addr;
+          sock.sport = port;
+          if (sock.type === 2) {
+            if (sock.server) {
+              sock.server.close();
+              sock.server = null;
+            }
+            try {
+              sock.sock_ops.listen(sock, 0);
+            } catch (e) {
+              if (!(e instanceof FS.ErrnoError)) throw e;
+              if (e.errno !== 138) throw e;
+            }
+          }
+        },
+        connect: function (sock, addr, port) {
+          if (sock.server) {
+            throw new FS.ErrnoError(138);
+          }
+          if (typeof sock.daddr !== 'undefined' && typeof sock.dport !== 'undefined') {
+            var dest = SOCKFS.websocket_sock_ops.getPeer(sock, sock.daddr, sock.dport);
+            if (dest) {
+              if (dest.socket.readyState === dest.socket.CONNECTING) {
+                throw new FS.ErrnoError(7);
+              } else {
+                throw new FS.ErrnoError(30);
+              }
+            }
+          }
+          var peer = SOCKFS.websocket_sock_ops.createPeer(sock, addr, port);
+          sock.daddr = peer.addr;
+          sock.dport = peer.port;
+          throw new FS.ErrnoError(26);
+        },
+        listen: function (sock, backlog) {
+          if (!ENVIRONMENT_IS_NODE) {
+            throw new FS.ErrnoError(138);
+          }
+        },
+        accept: function (listensock) {
+          if (!listensock.server) {
+            throw new FS.ErrnoError(28);
+          }
+          var newsock = listensock.pending.shift();
+          newsock.stream.flags = listensock.stream.flags;
+          return newsock;
+        },
+        getname: function (sock, peer) {
+          var addr, port;
+          if (peer) {
+            if (sock.daddr === undefined || sock.dport === undefined) {
+              throw new FS.ErrnoError(53);
+            }
+            addr = sock.daddr;
+            port = sock.dport;
+          } else {
+            addr = sock.saddr || 0;
+            port = sock.sport || 0;
+          }
+          return { addr: addr, port: port };
+        },
+        sendmsg: function (sock, buffer, offset, length, addr, port) {
+          if (sock.type === 2) {
+            if (addr === undefined || port === undefined) {
+              addr = sock.daddr;
+              port = sock.dport;
+            }
+            if (addr === undefined || port === undefined) {
+              throw new FS.ErrnoError(17);
+            }
+          } else {
+            addr = sock.daddr;
+            port = sock.dport;
+          }
+          var dest = SOCKFS.websocket_sock_ops.getPeer(sock, addr, port);
+          if (sock.type === 1) {
+            if (
+              !dest ||
+              dest.socket.readyState === dest.socket.CLOSING ||
+              dest.socket.readyState === dest.socket.CLOSED
+            ) {
+              throw new FS.ErrnoError(53);
+            } else if (dest.socket.readyState === dest.socket.CONNECTING) {
+              throw new FS.ErrnoError(6);
+            }
+          }
+          if (ArrayBuffer.isView(buffer)) {
+            offset += buffer.byteOffset;
+            buffer = buffer.buffer;
+          }
+          var data;
+          data = buffer.slice(offset, offset + length);
+          if (sock.type === 2) {
+            if (!dest || dest.socket.readyState !== dest.socket.OPEN) {
+              if (
+                !dest ||
+                dest.socket.readyState === dest.socket.CLOSING ||
+                dest.socket.readyState === dest.socket.CLOSED
+              ) {
+                dest = SOCKFS.websocket_sock_ops.createPeer(sock, addr, port);
+              }
+              dest.dgram_send_queue.push(data);
+              return length;
+            }
+          }
+          try {
+            dest.socket.send(data);
+            return length;
+          } catch (e) {
+            throw new FS.ErrnoError(28);
+          }
+        },
+        recvmsg: function (sock, length) {
+          if (sock.type === 1 && sock.server) {
+            throw new FS.ErrnoError(53);
+          }
+          var queued = sock.recv_queue.shift();
+          if (!queued) {
+            if (sock.type === 1) {
+              var dest = SOCKFS.websocket_sock_ops.getPeer(sock, sock.daddr, sock.dport);
+              if (!dest) {
+                throw new FS.ErrnoError(53);
+              } else if (
+                dest.socket.readyState === dest.socket.CLOSING ||
+                dest.socket.readyState === dest.socket.CLOSED
+              ) {
+                return null;
+              } else {
+                throw new FS.ErrnoError(6);
+              }
+            } else {
+              throw new FS.ErrnoError(6);
+            }
+          }
+          var queuedLength = queued.data.byteLength || queued.data.length;
+          var queuedOffset = queued.data.byteOffset || 0;
+          var queuedBuffer = queued.data.buffer || queued.data;
+          var bytesRead = Math.min(length, queuedLength);
+          var res = {
+            buffer: new Uint8Array(queuedBuffer, queuedOffset, bytesRead),
+            addr: queued.addr,
+            port: queued.port
+          };
+          if (sock.type === 1 && bytesRead < queuedLength) {
+            var bytesRemaining = queuedLength - bytesRead;
+            queued.data = new Uint8Array(queuedBuffer, queuedOffset + bytesRead, bytesRemaining);
+            sock.recv_queue.unshift(queued);
+          }
+          return res;
+        }
+      }
+    };
+    function getSocketFromFD(fd) {
+      var socket = SOCKFS.getSocket(fd);
+      if (!socket) throw new FS.ErrnoError(8);
+      return socket;
+    }
+    function setErrNo(value) {
+      HEAP32[___errno_location() >> 2] = value;
+      return value;
+    }
+    function inetNtop4(addr) {
+      return (
+        (addr & 255) +
+        '.' +
+        ((addr >> 8) & 255) +
+        '.' +
+        ((addr >> 16) & 255) +
+        '.' +
+        ((addr >> 24) & 255)
+      );
+    }
+    function inetNtop6(ints) {
+      var str = '';
+      var word = 0;
+      var longest = 0;
+      var lastzero = 0;
+      var zstart = 0;
+      var len = 0;
+      var i = 0;
+      var parts = [
+        ints[0] & 65535,
+        ints[0] >> 16,
+        ints[1] & 65535,
+        ints[1] >> 16,
+        ints[2] & 65535,
+        ints[2] >> 16,
+        ints[3] & 65535,
+        ints[3] >> 16
+      ];
+      var hasipv4 = true;
+      var v4part = '';
+      for (i = 0; i < 5; i++) {
+        if (parts[i] !== 0) {
+          hasipv4 = false;
+          break;
+        }
+      }
+      if (hasipv4) {
+        v4part = inetNtop4(parts[6] | (parts[7] << 16));
+        if (parts[5] === -1) {
+          str = '::ffff:';
+          str += v4part;
+          return str;
+        }
+        if (parts[5] === 0) {
+          str = '::';
+          if (v4part === '0.0.0.0') v4part = '';
+          if (v4part === '0.0.0.1') v4part = '1';
+          str += v4part;
+          return str;
+        }
+      }
+      for (word = 0; word < 8; word++) {
+        if (parts[word] === 0) {
+          if (word - lastzero > 1) {
+            len = 0;
+          }
+          lastzero = word;
+          len++;
+        }
+        if (len > longest) {
+          longest = len;
+          zstart = word - longest + 1;
+        }
+      }
+      for (word = 0; word < 8; word++) {
+        if (longest > 1) {
+          if (parts[word] === 0 && word >= zstart && word < zstart + longest) {
+            if (word === zstart) {
+              str += ':';
+              if (zstart === 0) str += ':';
+            }
+            continue;
+          }
+        }
+        str += Number(_ntohs(parts[word] & 65535)).toString(16);
+        str += word < 7 ? ':' : '';
+      }
+      return str;
+    }
+    function readSockaddr(sa, salen) {
+      var family = HEAP16[sa >> 1];
+      var port = _ntohs(HEAPU16[(sa + 2) >> 1]);
+      var addr;
+      switch (family) {
+        case 2:
+          if (salen !== 16) {
+            return { errno: 28 };
+          }
+          addr = HEAP32[(sa + 4) >> 2];
+          addr = inetNtop4(addr);
+          break;
+        case 10:
+          if (salen !== 28) {
+            return { errno: 28 };
+          }
+          addr = [
+            HEAP32[(sa + 8) >> 2],
+            HEAP32[(sa + 12) >> 2],
+            HEAP32[(sa + 16) >> 2],
+            HEAP32[(sa + 20) >> 2]
+          ];
+          addr = inetNtop6(addr);
+          break;
+        default:
+          return { errno: 5 };
+      }
+      return { family: family, addr: addr, port: port };
+    }
+    function inetPton4(str) {
+      var b = str.split('.');
+      for (var i = 0; i < 4; i++) {
+        var tmp = Number(b[i]);
+        if (isNaN(tmp)) return null;
+        b[i] = tmp;
+      }
+      return (b[0] | (b[1] << 8) | (b[2] << 16) | (b[3] << 24)) >>> 0;
+    }
+    function jstoi_q(str) {
+      return parseInt(str);
+    }
+    function inetPton6(str) {
+      var words;
+      var w, offset, z;
+      var valid6regx =
+        /^((?=.*::)(?!.*::.+::)(::)?([\dA-F]{1,4}:(:|\b)|){5}|([\dA-F]{1,4}:){6})((([\dA-F]{1,4}((?!\3)::|:\b|$))|(?!\2\3)){2}|(((2[0-4]|1\d|[1-9])?\d|25[0-5])\.?\b){4})$/i;
+      var parts = [];
+      if (!valid6regx.test(str)) {
+        return null;
+      }
+      if (str === '::') {
+        return [0, 0, 0, 0, 0, 0, 0, 0];
+      }
+      if (str.startsWith('::')) {
+        str = str.replace('::', 'Z:');
+      } else {
+        str = str.replace('::', ':Z:');
+      }
+      if (str.indexOf('.') > 0) {
+        str = str.replace(new RegExp('[.]', 'g'), ':');
+        words = str.split(':');
+        words[words.length - 4] =
+          jstoi_q(words[words.length - 4]) + jstoi_q(words[words.length - 3]) * 256;
+        words[words.length - 3] =
+          jstoi_q(words[words.length - 2]) + jstoi_q(words[words.length - 1]) * 256;
+        words = words.slice(0, words.length - 2);
+      } else {
+        words = str.split(':');
+      }
+      offset = 0;
+      z = 0;
+      for (w = 0; w < words.length; w++) {
+        if (typeof words[w] === 'string') {
+          if (words[w] === 'Z') {
+            for (z = 0; z < 8 - words.length + 1; z++) {
+              parts[w + z] = 0;
+            }
+            offset = z - 1;
+          } else {
+            parts[w + offset] = _htons(parseInt(words[w], 16));
+          }
+        } else {
+          parts[w + offset] = words[w];
+        }
+      }
+      return [
+        (parts[1] << 16) | parts[0],
+        (parts[3] << 16) | parts[2],
+        (parts[5] << 16) | parts[4],
+        (parts[7] << 16) | parts[6]
+      ];
+    }
+    var DNS = {
+      address_map: { id: 1, addrs: {}, names: {} },
+      lookup_name: function (name) {
+        var res = inetPton4(name);
+        if (res !== null) {
+          return name;
+        }
+        res = inetPton6(name);
+        if (res !== null) {
+          return name;
+        }
+        var addr;
+        if (DNS.address_map.addrs[name]) {
+          addr = DNS.address_map.addrs[name];
+        } else {
+          var id = DNS.address_map.id++;
+          assert(id < 65535, 'exceeded max address mappings of 65535');
+          addr = '172.29.' + (id & 255) + '.' + (id & 65280);
+          DNS.address_map.names[addr] = name;
+          DNS.address_map.addrs[name] = addr;
+        }
+        return addr;
+      },
+      lookup_addr: function (addr) {
+        if (DNS.address_map.names[addr]) {
+          return DNS.address_map.names[addr];
+        }
+        return null;
+      }
+    };
+    function getSocketAddress(addrp, addrlen, allowNull) {
+      if (allowNull && addrp === 0) return null;
+      var info = readSockaddr(addrp, addrlen);
+      if (info.errno) throw new FS.ErrnoError(info.errno);
+      info.addr = DNS.lookup_addr(info.addr) || info.addr;
+      return info;
+    }
     var SYSCALLS = {
       mappings: {},
       DEFAULT_POLLMASK: 5,
@@ -2926,6 +3621,17 @@ export const libjsesmini = () => {
         return low;
       }
     };
+    function ___syscall_bind(fd, addr, addrlen) {
+      try {
+        var sock = getSocketFromFD(fd);
+        var info = getSocketAddress(addr, addrlen);
+        sock.sock_ops.bind(sock, info.addr, info.port);
+        return 0;
+      } catch (e) {
+        if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) throw e;
+        return -e.errno;
+      }
+    }
     function ___syscall_fcntl64(fd, cmd, varargs) {
       SYSCALLS.varargs = varargs;
       try {
@@ -3030,6 +3736,66 @@ export const libjsesmini = () => {
         var mode = varargs ? SYSCALLS.get() : 0;
         var stream = FS.open(pathname, flags, mode);
         return stream.fd;
+      } catch (e) {
+        if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) throw e;
+        return -e.errno;
+      }
+    }
+    function writeSockaddr(sa, family, addr, port, addrlen) {
+      switch (family) {
+        case 2:
+          addr = inetPton4(addr);
+          zeroMemory(sa, 16);
+          if (addrlen) {
+            HEAP32[addrlen >> 2] = 16;
+          }
+          HEAP16[sa >> 1] = family;
+          HEAP32[(sa + 4) >> 2] = addr;
+          HEAP16[(sa + 2) >> 1] = _htons(port);
+          break;
+        case 10:
+          addr = inetPton6(addr);
+          zeroMemory(sa, 28);
+          if (addrlen) {
+            HEAP32[addrlen >> 2] = 28;
+          }
+          HEAP32[sa >> 2] = family;
+          HEAP32[(sa + 8) >> 2] = addr[0];
+          HEAP32[(sa + 12) >> 2] = addr[1];
+          HEAP32[(sa + 16) >> 2] = addr[2];
+          HEAP32[(sa + 20) >> 2] = addr[3];
+          HEAP16[(sa + 2) >> 1] = _htons(port);
+          break;
+        default:
+          return 5;
+      }
+      return 0;
+    }
+    function ___syscall_recvfrom(fd, buf, len, flags, addr, addrlen) {
+      try {
+        var sock = getSocketFromFD(fd);
+        var msg = sock.sock_ops.recvmsg(sock, len);
+        if (!msg) return 0;
+        if (addr) {
+          var errno = writeSockaddr(
+            addr,
+            sock.family,
+            DNS.lookup_name(msg.addr),
+            msg.port,
+            addrlen
+          );
+        }
+        HEAPU8.set(msg.buffer, buf);
+        return msg.buffer.byteLength;
+      } catch (e) {
+        if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) throw e;
+        return -e.errno;
+      }
+    }
+    function ___syscall_socket(domain, type, protocol) {
+      try {
+        var sock = SOCKFS.createSocket(domain, type, protocol);
+        return sock.stream.fd;
       } catch (e) {
         if (typeof FS === 'undefined' || !(e instanceof FS.ErrnoError)) throw e;
         return -e.errno;
@@ -5320,61 +6086,67 @@ export const libjsesmini = () => {
       return u8array;
     }
     var asmLibraryArg = {
-      b: ___assert_fail,
-      h: ___cxa_allocate_exception,
-      g: ___cxa_throw,
+      c: ___assert_fail,
+      a: ___cxa_allocate_exception,
+      d: ___cxa_throw,
+      z: ___syscall_bind,
       p: ___syscall_fcntl64,
-      E: ___syscall_ioctl,
-      F: ___syscall_open,
-      u: __embind_register_bigint,
-      I: __embind_register_bool,
-      e: __embind_register_class,
-      s: __embind_register_class_class_function,
-      k: __embind_register_class_constructor,
-      a: __embind_register_class_function,
+      I: ___syscall_ioctl,
+      J: ___syscall_open,
+      y: ___syscall_recvfrom,
+      x: ___syscall_socket,
+      v: __embind_register_bigint,
+      M: __embind_register_bool,
+      g: __embind_register_class,
+      t: __embind_register_class_class_function,
+      j: __embind_register_class_constructor,
+      b: __embind_register_class_function,
       i: __embind_register_class_property,
-      H: __embind_register_emval,
-      m: __embind_register_enum,
-      d: __embind_register_enum_value,
+      L: __embind_register_emval,
+      l: __embind_register_enum,
+      e: __embind_register_enum_value,
       r: __embind_register_float,
-      B: __embind_register_function,
-      f: __embind_register_integer,
-      c: __embind_register_memory_view,
+      F: __embind_register_function,
+      h: __embind_register_integer,
+      f: __embind_register_memory_view,
       q: __embind_register_std_string,
-      l: __embind_register_std_wstring,
-      J: __embind_register_void,
-      K: __emval_decref,
-      L: __emval_incref,
-      M: __emval_take_value,
-      j: _abort,
-      A: _clock_gettime,
-      G: _emscripten_memcpy_big,
-      C: _emscripten_resize_heap,
-      y: _environ_get,
-      z: _environ_sizes_get,
-      n: _fd_close,
-      D: _fd_read,
-      t: _fd_seek,
+      n: __embind_register_std_wstring,
+      N: __embind_register_void,
+      O: __emval_decref,
+      P: __emval_incref,
+      s: __emval_take_value,
+      k: _abort,
+      E: _clock_gettime,
+      K: _emscripten_memcpy_big,
+      G: _emscripten_resize_heap,
+      C: _environ_get,
+      D: _environ_sizes_get,
+      m: _fd_close,
+      H: _fd_read,
+      u: _fd_seek,
       o: _fd_write,
-      w: _getentropy,
-      v: _setTempRet0,
-      x: _strftime_l
+      A: _getentropy,
+      w: _setTempRet0,
+      B: _strftime_l
     };
     var asm = createWasm();
     var ___wasm_call_ctors = (Module['___wasm_call_ctors'] = function () {
-      return (___wasm_call_ctors = Module['___wasm_call_ctors'] = Module['asm']['O']).apply(
+      return (___wasm_call_ctors = Module['___wasm_call_ctors'] = Module['asm']['R']).apply(
         null,
         arguments
       );
     });
     var _malloc = (Module['_malloc'] = function () {
-      return (_malloc = Module['_malloc'] = Module['asm']['Q']).apply(null, arguments);
+      return (_malloc = Module['_malloc'] = Module['asm']['T']).apply(null, arguments);
     });
     var _free = (Module['_free'] = function () {
-      return (_free = Module['_free'] = Module['asm']['R']).apply(null, arguments);
+      return (_free = Module['_free'] = Module['asm']['U']).apply(null, arguments);
+    });
+    var _htons = (Module['_htons'] = function () {
+      return (_htons = Module['_htons'] = Module['asm']['V']).apply(null, arguments);
     });
     var ___getTypeName = (Module['___getTypeName'] = function () {
-      return (___getTypeName = Module['___getTypeName'] = Module['asm']['S']).apply(
+      return (___getTypeName = Module['___getTypeName'] = Module['asm']['W']).apply(
         null,
         arguments
       );
@@ -5385,46 +6157,49 @@ export const libjsesmini = () => {
       return (___embind_register_native_and_builtin_types = Module[
         '___embind_register_native_and_builtin_types'
       ] =
-        Module['asm']['T']).apply(null, arguments);
+        Module['asm']['X']).apply(null, arguments);
     });
     var ___errno_location = (Module['___errno_location'] = function () {
-      return (___errno_location = Module['___errno_location'] = Module['asm']['U']).apply(
+      return (___errno_location = Module['___errno_location'] = Module['asm']['Y']).apply(
         null,
         arguments
       );
     });
+    var _ntohs = (Module['_ntohs'] = function () {
+      return (_ntohs = Module['_ntohs'] = Module['asm']['Z']).apply(null, arguments);
+    });
     var stackSave = (Module['stackSave'] = function () {
-      return (stackSave = Module['stackSave'] = Module['asm']['V']).apply(null, arguments);
+      return (stackSave = Module['stackSave'] = Module['asm']['_']).apply(null, arguments);
     });
     var stackRestore = (Module['stackRestore'] = function () {
-      return (stackRestore = Module['stackRestore'] = Module['asm']['W']).apply(null, arguments);
+      return (stackRestore = Module['stackRestore'] = Module['asm']['$']).apply(null, arguments);
     });
     var stackAlloc = (Module['stackAlloc'] = function () {
-      return (stackAlloc = Module['stackAlloc'] = Module['asm']['X']).apply(null, arguments);
+      return (stackAlloc = Module['stackAlloc'] = Module['asm']['aa']).apply(null, arguments);
     });
     var dynCall_jiji = (Module['dynCall_jiji'] = function () {
-      return (dynCall_jiji = Module['dynCall_jiji'] = Module['asm']['Y']).apply(null, arguments);
+      return (dynCall_jiji = Module['dynCall_jiji'] = Module['asm']['ba']).apply(null, arguments);
     });
     var dynCall_viijii = (Module['dynCall_viijii'] = function () {
-      return (dynCall_viijii = Module['dynCall_viijii'] = Module['asm']['Z']).apply(
+      return (dynCall_viijii = Module['dynCall_viijii'] = Module['asm']['ca']).apply(
         null,
         arguments
       );
     });
     var dynCall_iiiiij = (Module['dynCall_iiiiij'] = function () {
-      return (dynCall_iiiiij = Module['dynCall_iiiiij'] = Module['asm']['_']).apply(
+      return (dynCall_iiiiij = Module['dynCall_iiiiij'] = Module['asm']['da']).apply(
         null,
         arguments
       );
     });
     var dynCall_iiiiijj = (Module['dynCall_iiiiijj'] = function () {
-      return (dynCall_iiiiijj = Module['dynCall_iiiiijj'] = Module['asm']['$']).apply(
+      return (dynCall_iiiiijj = Module['dynCall_iiiiijj'] = Module['asm']['ea']).apply(
         null,
         arguments
       );
     });
     var dynCall_iiiiiijj = (Module['dynCall_iiiiiijj'] = function () {
-      return (dynCall_iiiiiijj = Module['dynCall_iiiiiijj'] = Module['asm']['aa']).apply(
+      return (dynCall_iiiiiijj = Module['dynCall_iiiiiijj'] = Module['asm']['fa']).apply(
         null,
         arguments
       );
@@ -5482,6 +6257,7 @@ export const libjsesmini = () => {
       }
     }
     run();
+
     return libjsesmini.ready;
   };
 };

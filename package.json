@@ -4,7 +4,7 @@
   "description": "",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
+    "test": "mocha --require @babel/register  --recursive ./test/*.test.js",
     "start": "webpack serve --open --config build/webpack.dev.config.js & node nodejs/index.js",
     "nodejs": "node nodejs/index.js",
     "build:test": "node build/ready && webpack --config build/webpack.test.config.js",
@@ -48,6 +48,7 @@
     "@babel/plugin-transform-runtime": "^7.14.5",
     "@babel/preset-env": "^7.14.7",
     "@babel/preset-react": "^7.14.5",
+    "@babel/register": "^7.17.7",
     "@types/jest": "^27.4.0",
     "@types/node": "^17.0.10",
     "@types/react": "^17.0.38",
@@ -58,6 +59,7 @@
     "babel-eslint": "^10.1.0",
     "babel-loader": "^8.2.2",
     "babel-plugin-import": "^1.13.3",
+    "chai": "^4.3.6",
     "css-loader": "^6.5.1",
     "eslint": "^7.30.0",
     "eslint-config-airbnb": "^19.0.4",
@@ -74,6 +76,7 @@
     "less": "^4.1.1",
     "less-loader": "^10.0.1",
     "mini-css-extract-plugin": "^2.1.0",
+    "mocha": "^10.0.0",
     "optimize-css-assets-webpack-plugin": "^6.0.1",
     "postcss-loader": "^6.2.1",
     "prettier": "^2.5.1",
@@ -86,15 +89,15 @@
   "_env_": {
     "development": {
       "environment": "development",
-      "API_BASE": "http://192.168.113.109:9091",
-      "WEB_SOCKET": "ws://192.168.112.113:6555",
-      "ASSERT_SERVE": "http://192.168.113.109:8080"
+      "API_BASE": "http://192.168.113.214:9091",
+      "WEB_SOCKET": "ws://192.168.112.145:6555",
+      "ASSERT_SERVE": "http://192.168.113.214:8080"
     },
     "test": {
       "environment": "test",
-      "API_BASE": "http://192.168.113.109:9091",
-      "WEB_SOCKET": "ws://192.168.113.109:31111",
-      "ASSERT_SERVE": "http://192.168.113.109:8080"
+      "API_BASE": "http://192.168.113.214:9091",
+      "WEB_SOCKET": "ws://192.168.113.214:31111",
+      "ASSERT_SERVE": "http://192.168.113.214:8080"
     },
     "production": {
       "environment": "production",

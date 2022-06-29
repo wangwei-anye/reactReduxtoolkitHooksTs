@@ -1,5 +1,7 @@
 import { libjsesmini } from './libjsesmini';
 import { ASSERT_SERVE } from '@/constants';
+import Icon_arrow from '../assets/images/arrow.png';
+
 export default function (mapUrl) {
   return libjsesmini()().then((Module) => {
     return fetch(`${ASSERT_SERVE}/download/xodr/${mapUrl}`)
@@ -12,13 +14,19 @@ export default function (mapUrl) {
         var totalLines = {
           solidLines: [],
           brokenLines: [],
-          referenceLines: []
+          referenceLines: [],
+          arrowLayer: []
         };
 
         var od = Module.Position.GetOpenDrive();
         for (var r = 0; r < od.GetNumOfRoads(); r++) {
           //new a road
           var road = od.GetRoadByIdx(r);
+          //是否是弯道
+          let isJunction = false;
+          if (road.GetJunction() > 0) {
+            isJunction = true;
+          }
           for (var i = 0; i < road.GetNumberOfLaneSections(); i++) {
             var lane_section = road.GetLaneSectionByIdx(i);
             for (var j = 0; j < lane_section.GetNumberOfLanes(); j++) {
@@ -33,9 +41,12 @@ export default function (mapUrl) {
                     var lane_roadmarktypeline = lane_roadmarktype.GetLaneRoadMarkTypeLineByIdx(n);
                     var curr_osi_rm = lane_roadmarktypeline.GetOSIPoints();
                     var roadmarkColor = lane_roadmark.GetColorInt(); //RoadMarkColor
-                    if (roadmarkColor == Module.RoadMarkColor.YELLOW) {
+                    let tempColor = '';
+                    if (roadmarkColor == Module.RoadMarkColor.YELLOW.value) {
+                      tempColor = [255, 255, 0, 255];
                       //黄线
                     } else {
+                      tempColor = [255, 255, 255, 255];
                     }
                     /*
                       enum RoadMarkColor{
@@ -53,7 +64,8 @@ export default function (mapUrl) {
                       //虚线
                       var brokenLineObj = {
                         name: 'brokenLine' + r + '-' + i + '-' + j + '-' + k + '-' + m + '-' + n,
-                        path: []
+                        path: [],
+                        color: tempColor
                       };
                       var points = curr_osi_rm.GetPoints();
                       var pathResult = [];
@@ -67,7 +79,8 @@ export default function (mapUrl) {
                       //实线
                       var solidLineObj = {
                         name: 'solidLine' + r + '-' + i + '-' + j + '-' + k + '-' + m + '-' + n,
-                        path: []
+                        path: [],
+                        color: tempColor
                       };
 
                       var points = curr_osi_rm.GetPoints();
@@ -108,6 +121,23 @@ export default function (mapUrl) {
               referenceLineObj.path = pathResult;
               totalLines.referenceLines.push(referenceLineObj);
               /******reference line****************/
+
+              /******arrowLayer line****************/
+              if (!isJunction && referenceLineObj.path.length > 2) {
+                const centerPoint = parseInt(referenceLineObj.path.length / 2);
+                var arrowObj = {
+                  coordinates: referenceLineObj.path[centerPoint],
+                  angleArr: [
+                    referenceLineObj.path[centerPoint],
+                    referenceLineObj.path[centerPoint + 1]
+                  ],
+                  icon: Icon_arrow,
+                  anchorY: 0, // 原点偏移量  h 一半
+                  w: 100,
+                  h: 100
+                };
+                totalLines.arrowLayer.push(arrowObj);
+              }
             }
           }
         }

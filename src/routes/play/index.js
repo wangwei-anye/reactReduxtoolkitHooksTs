@@ -12,6 +12,8 @@ import {
 import { XVIZ_STYLE, CAR } from './lib/constants';
 import getDataFromXodr from '@/utils/getDataFromXodr';
 import { createMapLayer } from '../mapEdit/lib/layers';
+import { createTrafficLightLayer } from './lib/layers';
+import { formatSeconds } from '@/utils/tools';
 import { ASSERT_SERVE } from '@/constants';
 import lodash from 'lodash';
 import qs from 'qs';
@@ -22,14 +24,19 @@ let clickNum = 0;
 let maxClickNum = 5;
 let XVIDready = false;
 let mapReady = false;
+let renderFlag = true;
 class Play extends PureComponent {
   state = {
     log: exampleLog,
     loading: false,
     mapData: {
       solidLines: [],
-      dashedLines: []
+      brokenLines: [],
+      referenceLines: [],
+      arrowLayer: []
     },
+    fileData: {},
+    TrafficLightsData: [],
     reRenderFlag: false,
     settings: {
       viewMode: 'PERSPECTIVE',
@@ -47,27 +54,34 @@ class Play extends PureComponent {
       })
       .on('error', console.error)
       .connect();
-    this.getData();
-    // console.log(getXVIZConfig());
+    this.getMapData();
   }
-  getData = async () => {
+
+  getMapData = async () => {
     this.setState({
       loading: true
     });
     let prarms = qs.parse(lodash.split(window.location.search, '?')[1]);
-    const mapName = await fetch(`${ASSERT_SERVE}/download/replay/${prarms.fileUrl}`)
-      .then((data) => {
-        return data.text();
-      })
-      .then((file_text) => {
-        return JSON.parse(file_text).MapFileName;
-      });
-    const mapData = await getDataFromXodr(mapName);
+    //加载地图
+    const mapData = await getDataFromXodr(prarms.mapName);
+    //加载红绿灯
+    let fileData = {};
+    if (prarms.trafficUrl && prarms.trafficUrl != 'null') {
+      console.log(prarms.trafficUrl);
+      fileData = await fetch(`${ASSERT_SERVE}/download/replay/${prarms.trafficUrl}`)
+        .then((data) => {
+          return data.text();
+        })
+        .then((file_text) => {
+          return JSON.parse(file_text);
+        });
+    }
     console.log('map load');
     mapReady = true;
     if (mapData) {
       this.setState({
-        mapData
+        mapData,
+        fileData
       });
     }
     this.ready();
@@ -110,11 +124,67 @@ class Play extends PureComponent {
         reRenderFlag: !this.state.reRenderFlag
       });
     }
+    this.getTrafficLightLayerData(Number(e));
+  };
+
+  //设置红绿灯
+  getTrafficLightLayerData = (time) => {
+    if (!renderFlag) {
+      return;
+    }
+    renderFlag = false;
+    //每秒变化一下红绿灯
+    setTimeout(() => {
+      renderFlag = true;
+    }, 1000);
+    const { fileData } = this.state;
+    const { TrafficLightInfo } = fileData;
+    if (!TrafficLightInfo) return;
+    const { TrafficLights, states } = TrafficLightInfo;
+    let nowState;
+    for (let i = 0; i < states.length; i++) {
+      if (states[i].t < time && time > states[i + 1].t) {
+        nowState = states[i].sta;
+      }
+    }
+    if (!nowState) {
+      return [];
+    }
+    const result = [];
+    for (let i = 0; i < TrafficLights.length; i++) {
+      const tempPathData = [];
+      for (let j = 0; j < TrafficLights[i].pos.length; j++) {
+        tempPathData.push([TrafficLights[i].pos[j].x, TrafficLights[i].pos[j].y]);
+      }
+      const colorStr = nowState.charAt(TrafficLights[i].id).toUpperCase();
+      let colorData = [];
+
+      if (colorStr === 'R') {
+        colorData = [255, 0, 0, 255];
+      }
+      if (colorStr === 'G') {
+        colorData = [0, 255, 0, 255];
+      }
+      if (colorStr === 'Y') {
+        colorData = [255, 255, 0, 255];
+      }
+
+      result.push({
+        name: 'TrafficLights-' + TrafficLights[i].id,
+        path: tempPathData,
+        color: colorData
+      });
+    }
+    this.setState({
+      TrafficLightsData: result
+    });
   };
 
   render() {
-    const { log, settings, mapData, loading } = this.state;
-    const layers = createMapLayer(mapData);
+    const { log, settings, mapData, loading, TrafficLightsData } = this.state;
+    const layers = createMapLayer(mapData, false);
+    const TrafficLightLayer = createTrafficLightLayer(TrafficLightsData);
+    layers.push(TrafficLightLayer);
     return (
       <div className='play-wrap'>
         {loading ? (
@@ -143,8 +213,8 @@ class Play extends PureComponent {
               <div id='hud'>
                 {/* 转向 箭头 */}
                 {/* <TurnSignalWidget log={log} streamName='/vehicle/turn_signal' /> */}
-                {/* 红绿灯 */}
-                {/* <TrafficLightWidget log={log} streamName='/vehicle/traffic_light' /> */}
+                {/* 红绿灯  red  yellow  green*/}
+                <TrafficLightWidget log={log} streamName='/vehicle/traffic_light' />
                 {/* 仪表盘 加速度 */}
                 <MeterWidget
                   log={log}
@@ -154,8 +224,8 @@ class Play extends PureComponent {
                   }}
                   className='hud-item'
                   label='Acceleration'
-                  min={-4}
-                  max={4}
+                  min={-10}
+                  max={10}
                 />
                 <hr />
                 {/* 仪表盘 速度 */}
@@ -163,10 +233,10 @@ class Play extends PureComponent {
                   log={log}
                   streamName='/vehicle/velocity'
                   label='Speed'
-                  getWarning={(x) => (x > 6 ? 'FAST' : '')}
+                  // getWarning={(x) => (x > 6 ? 'FAST' : '')}
                   className='hud-item'
                   min={0}
-                  max={20}
+                  max={200}
                 />
                 <hr />
                 <MeterWidget
@@ -202,7 +272,9 @@ class Play extends PureComponent {
                 width='100%'
                 log={log}
                 onSeek={this.onPlay}
-                formatTimestamp={(x) => x}
+                formatTimestamp={(x) => {
+                  return formatSeconds(x);
+                }}
               />
             </div>
           </div>

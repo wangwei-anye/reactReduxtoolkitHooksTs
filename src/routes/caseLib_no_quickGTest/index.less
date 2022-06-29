@@ -1,0 +1,113 @@
+.case-lib-wrap {
+  display: flex;
+  height: calc(100vh - 44px);
+  overflow: hidden;
+  border-left: 1px solid #ccc;
+  .file-box {
+    flex: 0 0 300px;
+    border-right: 1px solid #ccc;
+    .title {
+      height: 44px;
+      line-height: 44px;
+      border-bottom: 1px solid #ccc;
+      padding-left: 16px;
+    }
+    .btn-menu {
+      height: 44px;
+      line-height: 44px;
+      padding: 0 16px;
+      font-size: 18px;
+      border-bottom: 1px solid #ccc;
+      .btn-new {
+        cursor: pointer;
+        .btn-txt {
+          font-size: 16px;
+          margin-left: 8px;
+        }
+      }
+      .btn-delete {
+        cursor: pointer;
+        float: right;
+      }
+    }
+    .file-list {
+      height: calc(100vh - 132px);
+      overflow-y: scroll;
+    }
+  }
+  .content-box {
+    flex: 1;
+    .case-box-wrap {
+      display: flex;
+      flex-direction: column;
+      height: 100%;
+
+      .menu-box {
+        flex: 0 0 100px;
+        border-bottom: 1px solid #ccc;
+        display: flex;
+        align-items: center;
+        padding-left: 20px;
+        .item-btn {
+          flex: 0 0 150px;
+        }
+        .item-list {
+          flex: 0 0 300px;
+          display: flex;
+          .item {
+            flex: 1;
+            div {
+              padding-left: 3px;
+            }
+          }
+        }
+      }
+      .search-box {
+        padding-left: 20px;
+        flex: 0 0 100px;
+        border-bottom: 1px solid #ccc;
+        display: flex;
+        align-items: center;
+        .select-box {
+          width: 300px;
+          span {
+            margin-right: 5px;
+          }
+          &.reset-btn {
+            width: 100px;
+            div {
+              padding-left: 3px;
+            }
+          }
+        }
+        .ant-select {
+          width: 200px !important;
+        }
+      }
+      .list-box {
+        flex: 1;
+        overflow-y: scroll;
+      }
+    }
+  }
+}
+.create-task-modal {
+  .create-task-list {
+    padding-left: 20px;
+    .create-task-item {
+      margin-bottom: 20px;
+      .input {
+        width: 300px;
+        border: 1px solid #ccc;
+        height: 32px;
+        padding-left: 10px;
+      }
+      .select {
+        width: 300px;
+      }
+      &:last-child {
+        margin-bottom: 0;
+      }
+    }
+  }
+}

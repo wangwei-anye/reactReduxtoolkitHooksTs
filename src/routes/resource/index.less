@@ -10,19 +10,44 @@
   .resource-list-box {
     flex: 1;
     border-top: 1px solid #ccc;
-    padding-top: 15px;
     overflow-y: scroll;
+
+    .menu-box {
+      margin-top: 15px;
+      box-sizing: border-box;
+      flex: 0 0 100px;
+      border-bottom: 1px solid #ccc;
+      display: flex;
+      align-items: center;
+      padding-left: 20px;
+      .item-list {
+        flex: 0 0 100px;
+        display: flex;
+        .item {
+          flex: 1;
+          div {
+            padding-left: 3px;
+          }
+        }
+      }
+    }
+
     .resource-list {
       display: flex;
       justify-content: flex-start;
       flex-wrap: wrap;
       .resource-list-item {
         flex: 0 0 90px;
-        margin-left: 15px;
-        height: 110px;
+        height: 140px;
         border-radius: 5px;
         text-align: center;
         cursor: pointer;
+        &.no_active{
+          border: 10px solid #f0f2f5;
+        }
+        &.active{
+          border: 10px solid #DDF0FF;
+        }
         .resource-list-item-box {
           width: 90px;
           height: 90px;
@@ -41,6 +66,20 @@
           white-space: nowrap;
           width: 90px;
         }
+      }
+    }
+
+    .map-box-wrap {
+      position: relative;
+      visibility: hidden;
+      width: 800px;
+      height: 800px;
+      .map-box {
+        overflow: hidden;
+        height: 100%;
+        display: block;
+        box-sizing: border-box;
+        position: relative; //地图的超出部分才能隐藏
       }
     }
   }

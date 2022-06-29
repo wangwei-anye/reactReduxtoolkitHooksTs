@@ -289,6 +289,61 @@
           cursor: pointer;
         }
       }
+      .traffic-info{
+        .tip {
+          border-bottom: 1px solid #ccc;
+          padding: 10px 20px;
+          &.border-top{
+            margin-top: 10px;
+            border-top: 1px solid #ccc;
+          }
+        }
+        .slider-box{
+          margin-top: 15px;
+          overflow: hidden;
+          padding: 0 20px;
+          .txt{
+            box-sizing: border-box;
+            float: left;
+            width: 70px;
+            height: 40px;
+            line-height: 30px;
+          }
+          .box{
+            box-sizing: border-box;
+            float: left;
+            height: 40px;
+            width: calc(100% - 70px);
+            &.box-width-all{
+              width: 100%;
+              float: none;
+            }
+          }
+          .type-line{
+            display: flex;
+            justify-content: space-between;
+            div{
+              flex: 1;
+              &:nth-child(3){
+                text-align: right;
+              }
+            }
+          }
+        }
+      }
     }
+  }
+}
+//修改antd  slider 样式
+.ant-slider-tooltip{
+  .ant-tooltip-inner{
+    color: black !important;
+    background-color: rgba(1,1,1,0) !important;
+    box-shadow: none !important;
+    position: relative !important;
+    bottom: -20px !important;
+  }
+  .ant-tooltip-arrow{
+    display: none !important;
   }
 }

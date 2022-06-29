@@ -11,12 +11,14 @@ const wss = new WebSocketServer({ port: 6555 });
 console.log('start node server on port 6555');
 // 服务器被客户端连接
 wss.on('connection', (ws, req) => {
-  let url = req.url;
-  let prarms = qs.parse(_.split(url, '?')[1]);
-  const data = buildXvizData(prarms.log);
-  data.then((result) => {
-    for (let i = 0; i < result.length; i++) {
-      ws.send(result[i]);
-    }
-  });
+  try {
+    let url = req.url;
+    let prarms = qs.parse(_.split(url, '?')[1]);
+    const data = buildXvizData(prarms.log);
+    data.then((result) => {
+      for (let i = 0; i < result.length; i++) {
+        ws.send(result[i]);
+      }
+    });
+  } catch (error) {}
 });

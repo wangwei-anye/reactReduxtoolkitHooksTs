@@ -40,6 +40,27 @@ const Doc = () => {
           <li>web端任务状态自动实时同步刷新</li>
         </ul>
       </div>
+      <div className='small-version'>v1.3 - 2022.05.30</div>
+      <div className='fix-title'>第四版</div>
+      <div className='fix-list'>
+        <ul>
+          <li>新增支持创建交通流信号灯案例</li>
+          <li>新增支持查看、预览opensnario场景文件</li>
+          <li>支持多用户角色登录、管理模块</li>
+        </ul>
+      </div>
+      <div className='small-version'>v1.4 - 2022.06.30</div>
+      <div className='fix-title'>第五版</div>
+      <div className='fix-list'>
+        <ul>
+          <li>添加快速测试集系统</li>
+          <li>新增地图模块，支持上传opendrive格式地图</li>
+          <li>新增yaml文件导入功能</li>
+          <li>新增日构建功能</li>
+          <li>新增镜像管理功能</li>
+          <li>地图车道增加方向箭头</li>
+        </ul>
+      </div>
     </div>
   );
 };

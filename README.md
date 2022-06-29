@@ -13,7 +13,7 @@ yarn nodejs
 
 ## 注意项
 
-1、yarn 必须降级到 1.10.0 才能安装 streetscape.gl
+1、必须翻墙、然后 yarn 必须降级到 1.10.0 才能安装 streetscape.gl
 
 2、webpack 里需要定义
 'process.env.NODE_DEBUG': false
@@ -38,3 +38,9 @@ patterns: [
 5、地图的容器要设置 position: relative; 地图超出部分才隐藏
 
 6、后端提供的 json 数据需要经过 nodejs 服务解析为 xviz 数据流，才能给 streetscape.gl 使用
+
+7、把 node_modules\@deck.gl\core\dist\esm\lib\layer.js 下的 967、968 两行注释掉
+因为 streetscape.gl 播放时，如果把进度条拉到 播放数据 还没加载到的地方，等数据加载到那个地方时候，会从新加载 deck.gl layers
+这时候会判断当前 pathLayer 已经存在，就会报错
+// assert(!this.internalState && !this.state);
+// assert(isFinite(this.props.coordinateSystem));

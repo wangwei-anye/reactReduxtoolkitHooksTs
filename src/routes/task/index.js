@@ -81,7 +81,9 @@ const Task = () => {
           <React.Fragment>
             {item.children ? (
               <span>
-                <Progress percent={(item.testDoneCount / item.sumCount) * 100} />
+                <Progress
+                  percent={parseFloat((item.testDoneCount / item.sumCount) * 100).toFixed(2)}
+                />
               </span>
             ) : null}
           </React.Fragment>
@@ -111,7 +113,6 @@ const Task = () => {
       dataIndex: 'createTime',
       key: 'createTime'
     },
-    ,
     {
       title: '通过/总数',
       key: 'createTime',
@@ -186,7 +187,7 @@ const Task = () => {
             {item.playback ? (
               <span
                 onClick={() => {
-                  toPlay(item.playback);
+                  toPlay(item.playback, item.trafficLightsPlayback, item.mapName);
                 }}
               >
                 <PlayCircleOutlined style={{ fontSize: 24, cursor: 'pointer', color: 'green' }} />
@@ -202,8 +203,8 @@ const Task = () => {
       key: 'algorithm'
     }
   ];
-  const toPlay = (url) => {
-    window.open(`/play?fileUrl=${url}`);
+  const toPlay = (playback, trafficLightsPlayback, mapName) => {
+    window.open(`/play?fileUrl=${playback}&trafficUrl=${trafficLightsPlayback}&mapName=${mapName}`);
   };
 
   useEffect(() => {
@@ -238,6 +239,7 @@ const Task = () => {
     }
     dispatch(
       getData({
+        menuId: '1495942761243193345', //任务管理 默认这个ID
         current: pageIndex,
         size: DEFAULT_PAGE_SIZE,
         state: tabkey === '1' ? STATE_DOING : STATE_COMPLETE
@@ -289,6 +291,19 @@ const Task = () => {
     selectedRowKeys,
     onChange: onSelectChange
   };
+
+  if (listData.records.length > 0 && listData.records[0].creator) {
+    columns_doing.splice(4, 0, {
+      title: '创建人',
+      dataIndex: 'creator',
+      key: 'creator'
+    });
+    columns_complete.splice(3, 0, {
+      title: '创建人',
+      dataIndex: 'creator',
+      key: 'creator'
+    });
+  }
   return (
     <div className='task-wrap'>
       <Tabs defaultActiveKey={tabkey} onChange={tabChangeHandle}>

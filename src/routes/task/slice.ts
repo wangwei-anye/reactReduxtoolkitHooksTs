@@ -1,7 +1,6 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { getListApi } from '@/services/task';
-import { STATE_DOING, STATE_COMPLETE, STATE_PASSS, STATE_QUEUE } from './constants';
-import { AppThunk, RootState } from '../../models/store';
+import { RootState } from '../../models/store';
 interface taskState {
   listData: object;
   loading: boolean;

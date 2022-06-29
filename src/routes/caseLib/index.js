@@ -1,9 +1,23 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { Tree, Tooltip, Button } from 'antd';
+import { Tree, Tooltip, message } from 'antd';
 import { FileAddOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useSelector, useDispatch } from 'react-redux';
-import { editFile, selectCaseLib, getMenuData, getListData } from './slice';
-import { createMenuDataApi, deleteMenuDataApi, renameMenuDataApi } from '@/services/caseLib';
+import {
+  editFile,
+  selectCaseLib,
+  getMenuData,
+  getQuickTestMenuData,
+  getListData,
+  getQuickTestListData
+} from './slice';
+import {
+  createMenuDataApi,
+  createQuickTestMenuDataApi,
+  deleteMenuDataApi,
+  renameMenuDataApi,
+  addToTestApi,
+  manageTestApi
+} from '@/services/caseLib';
 import CaseBox from './caseBox';
 import { DEFAULT_PAGE_SIZE } from '@/constants';
 
@@ -14,45 +28,73 @@ const CaseLib = () => {
   const [inputValue, setInputValue] = useState('');
   const dispatch = useDispatch();
   //菜单列表
-  const { treeData } = useSelector(selectCaseLib);
+  const { treeData, listData, quickTestTreeData, quickTestListData } = useSelector(selectCaseLib);
   //菜单key
   const [selectKeys, setSelectKeys] = useState([]);
+  //快速测试集菜单key
+  const [quickTestSelectKeys, setQuickTestSelectKeys] = useState([]);
   //1 只读 ， 0 可操作 ， 2 ：点击空白切换到主菜单，可新增，不可删除
-  const [readonly, setReadonly] = useState(1);
+  const [readonly, setReadonly] = useState(0);
 
-  const { listData } = useSelector(selectCaseLib);
   const childRef = useRef();
 
   useEffect(() => {
     dispatch(getMenuData());
+    dispatch(getQuickTestMenuData());
   }, []);
 
   useEffect(() => {
     if (treeData.length > 0) {
       if (selectKeys.length === 0) {
         setSelectKeys([treeData[0].key]);
-        setReadonly(1);
+        setReadonly(treeData[0].readOnly);
         queryList(treeData[0].key);
       }
     }
   }, [treeData]);
+  useEffect(() => {
+    if (quickTestTreeData.length > 0) {
+      if (quickTestSelectKeys.length === 0) {
+        setQuickTestSelectKeys([quickTestTreeData[0].key]);
+        queryQuickTestList(quickTestTreeData[0].key);
+      }
+    }
+  }, [quickTestTreeData]);
 
-  const pageIndexChange = useCallback((value) => {
-    queryList(selectKeys[0], value);
+  const pageIndexChange = useCallback((value, param) => {
+    queryList(selectKeys[0], value, param);
   });
 
-  const queryList = (menuId, current = 1) => {
+  // const quickTestPageIndexChange = useCallback((value) => {
+  //   queryQuickTestList(quickTestSelectKeys[0], value);
+  // });
+
+  const queryList = (menuId, current = 1, param = {}) => {
     dispatch(
       getListData({
-        menuId,
+        menuIds: menuId,
         current,
-        size: DEFAULT_PAGE_SIZE
+        size: DEFAULT_PAGE_SIZE,
+        ...param
+      })
+    );
+  };
+
+  const queryQuickTestList = (menuId, current = 1) => {
+    dispatch(
+      getQuickTestListData({
+        menuId: menuId,
+        current,
+        size: 1000
       })
     );
   };
 
   const createFileHandle = async () => {
     if (readonly === 1) {
+      //定位到主菜单
+      setSelectKeys(['1495941982176391170']); //主菜单
+      setReadonly(2);
       return;
     }
     const { data } = await createMenuDataApi({
@@ -66,6 +108,24 @@ const CaseLib = () => {
       queryList(data.data);
     }
   };
+
+  const createQuickTestFileHandle = async () => {
+    let key = '';
+    if (quickTestSelectKeys.length === 0) {
+      key = '1';
+    } else {
+      key = quickTestSelectKeys[0];
+    }
+    const { data } = await createQuickTestMenuDataApi({
+      name: 'new',
+      parentId: key
+    });
+    if (data.code === 200) {
+      setQuickTestSelectKeys([data.data]);
+      dispatch(getQuickTestMenuData());
+    }
+  };
+
   const deleteFileHandle = async () => {
     if (readonly === 1 || readonly === 2) {
       return;
@@ -79,6 +139,43 @@ const CaseLib = () => {
       dispatch(getMenuData());
     }
   };
+
+  const deleteQuickTestFileHandle = async () => {
+    const { data } = await deleteMenuDataApi({
+      id: quickTestSelectKeys[0]
+    });
+    if (data.code === 200) {
+      setQuickTestSelectKeys([]);
+      dispatch(getQuickTestMenuData());
+    }
+  };
+
+  const addToTestHandle = async (caseIds) => {
+    if (quickTestSelectKeys.length === 0) {
+      message.info('请先选中一个快速测试集文件夹');
+      return;
+    }
+    const { data } = await addToTestApi({
+      menuId: quickTestSelectKeys[0],
+      caseIds: caseIds
+    });
+    if (data.code === 200) {
+      queryQuickTestList(quickTestSelectKeys[0]);
+    }
+  };
+
+  const manageTestHandle = async (caseIds) => {
+    const { data } = await manageTestApi({
+      menuId: quickTestSelectKeys[0],
+      caseIds: caseIds
+    });
+    if (data.code === 200) {
+      queryQuickTestList(quickTestSelectKeys[0]);
+      return 'success';
+    }
+    return 'error';
+  };
+
   const changeHandle = (e) => {
     setInputValue(e.target.value);
   };
@@ -90,9 +187,21 @@ const CaseLib = () => {
     setSelectKeys(keys);
     if (keys.length > 0) {
       childRef.current.setCurrent(1);
-      queryList(keys[0]);
+      const param = childRef.current.getParam();
+      queryList(keys[0], 1, param);
     }
   };
+
+  const onQuickTestSelect = (keys, info) => {
+    if (keys[0] === quickTestSelectKeys[0]) {
+      return;
+    }
+    setQuickTestSelectKeys(keys);
+    if (keys.length > 0) {
+      queryQuickTestList(keys[0], 1);
+    }
+  };
+
   const blurHandle = async (item) => {
     if (inputValue.trim() === '') {
       setInputValue('');
@@ -106,6 +215,7 @@ const CaseLib = () => {
     setInputValue('');
     if (data.code === 200) {
       dispatch(getMenuData());
+      dispatch(getQuickTestMenuData());
     }
   };
   const doubelClickHandle = (key, isEditable) => {
@@ -117,10 +227,20 @@ const CaseLib = () => {
     );
   };
   const clickFileBoxHandle = (e) => {
+    if (typeof e.target.className !== 'string') {
+      return;
+    }
     //点击文件列表空白处 ，定位到主菜单
-    if (e.target && e.target.className && e.target.className === 'file-list') {
+    if (e.target && e.target.className && e.target.className.indexOf('case-click-area') !== -1) {
       setSelectKeys(['1495941982176391170']); //主菜单
       setReadonly(2);
+    }
+    if (
+      e.target &&
+      e.target.className &&
+      e.target.className.indexOf('quick-test-click-area') !== -1
+    ) {
+      setQuickTestSelectKeys(['1']); //主菜单
     }
   };
 
@@ -158,8 +278,8 @@ const CaseLib = () => {
     });
   };
 
-  const renderData = () => {
-    const jsonTreeData = JSON.parse(JSON.stringify(treeData));
+  const renderData = (data) => {
+    const jsonTreeData = JSON.parse(JSON.stringify(data));
     const result = renderDataHandle(jsonTreeData);
     return result;
   };
@@ -167,8 +287,8 @@ const CaseLib = () => {
   return (
     <div className='case-lib-wrap'>
       <div className='file-box' onClick={clickFileBoxHandle}>
-        <div className='title'>测试案例库</div>
-        <div className='btn-menu'>
+        <div className='title case-click-area'>测试案例库</div>
+        <div className='btn-menu case-click-area'>
           <span className='btn-new' onClick={createFileHandle}>
             <FileAddOutlined style={{ color: readonly === 1 ? '#ccc' : 'rgba(0, 0, 0, 0.85)' }} />
             <span
@@ -186,7 +306,7 @@ const CaseLib = () => {
             </Tooltip>
           </span>
         </div>
-        <div className='file-list'>
+        <div className='file-list case-click-area'>
           {treeData.length > 0 ? (
             <DirectoryTree
               defaultExpandAll
@@ -197,14 +317,41 @@ const CaseLib = () => {
             />
           ) : null}
         </div>
+        <div className='title quick-test-click-area'>快速测试集</div>
+        <div className='btn-menu quick-test-click-area'>
+          <span className='btn-new' onClick={createQuickTestFileHandle}>
+            <FileAddOutlined />
+            <span className='btn-txt'>新建</span>
+          </span>
+          <span className='btn-delete' onClick={deleteQuickTestFileHandle}>
+            <Tooltip placement='bottom' title='删除'>
+              <DeleteOutlined />
+            </Tooltip>
+          </span>
+        </div>
+        <div className='quick-test-file-list quick-test-click-area'>
+          {treeData.length > 0 ? (
+            <DirectoryTree
+              defaultExpandAll
+              selectedKeys={quickTestSelectKeys}
+              onSelect={onQuickTestSelect}
+              expandAction={false}
+              treeData={renderData(quickTestTreeData)}
+            />
+          ) : null}
+        </div>
       </div>
       <div className='content-box'>
         <CaseBox
           listData={listData}
+          quickTestListData={quickTestListData}
           menuId={selectKeys}
           ref={childRef}
           readOnly={readonly === 1 || readonly === 2 ? true : false}
           pageIndexChange={pageIndexChange}
+          // quickTestPageIndexChange={quickTestPageIndexChange}
+          addToTestHandle={addToTestHandle}
+          manageTestHandle={manageTestHandle}
         ></CaseBox>
       </div>
     </div>

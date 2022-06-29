@@ -9,7 +9,8 @@ import {
   Switch,
   message,
   Modal,
-  Button
+  Button,
+  Slider
 } from 'antd';
 import {
   DeleteOutlined,
@@ -53,17 +54,18 @@ import getTrajectory from '@/utils/getTrajectory';
 import { saveApi, updateApi } from '@/services/mapEdit';
 import { getAlgorithm } from '@/services/caseLib';
 import { createTaskApi } from '@/services/task';
+import { getMapListApi } from '@/services/resource';
 import { createMapLayer, createCarIconLayer, createRouterLayer } from './lib/layers';
 import {
   Resource_lib_tree,
-  Resource_list_map,
   RESOURCE_TYPE,
   Resource_list_main_car,
   Resource_list_element_car,
   Resource_list_element_people,
   Resource_list_element_animal,
   Resource_list_element_bicycle,
-  Resource_list_triggers
+  Resource_list_triggers,
+  Resource_traffic_flow
 } from './lib/constant';
 import './index.less';
 const { Option } = Select;
@@ -78,7 +80,6 @@ let drag_type = ''; //拖动的 资源类型
 let isDropEnd = false; //拖动到map 的flag
 let createElementId = 1; //元素ID ，生成一个新元素 就加1
 let lastFileLen = 0; //上一次的资源加载树的 文件数量，只有数量变化的时候才重新渲染，默认打开才有效果
-let disabledSaveBtn = false;
 let playFrame = 0;
 let playInterval;
 let playStartTrigger = {}; //已经触发的触发器  { id :  触发时间 }
@@ -112,7 +113,12 @@ const MapEdit = () => {
   const [mapZoom, setMapZoom] = useState(18);
   const [viewState, useViewState] = useState({});
   const [loading, setLoading] = useState(false);
-  const [mapData, setMapData] = useState({ solidLines: [], brokenLines: [], referenceLines: [] });
+  const [mapData, setMapData] = useState({
+    solidLines: [],
+    brokenLines: [],
+    referenceLines: [],
+    arrowLayer: []
+  });
   //切换资源库类型
   const [resourceLibType, setResourceLibType] = useState(RESOURCE_TYPE.MAP);
   //当前操作的资源类型
@@ -126,11 +132,13 @@ const MapEdit = () => {
   //加载的资源树 key
   const [resourceLoadTreeSelectKey, setResourceLoadTreeSelectKey] = useState([]);
   //加载的资源
-  const [mapLoadInfo, setMapLoadInfo] = useState(Resource_list_map[0]);
+  const [mapListData, setMapListData] = useState([]);
+  const [mapLoadInfo, setMapLoadInfo] = useState({});
   const [mainCarInfo, setMainCarInfo] = useState({}); //对象  一个
   const [elementInfo, setElementInfo] = useState([]); //数组  多个
   const [triggersInfo, setTriggersInfo] = useState([]); //数组  多个
   const [routerData, setRouterData] = useState([]); //数组  多个
+  const [trafficFlowInfo, setTrafficFlowInfo] = useState({});
 
   //是否播放状态
   const [isPlay, setIsPlay] = useState(false);
@@ -159,18 +167,51 @@ const MapEdit = () => {
   };
   //初始化
   useEffect(() => {
-    if (localStorage.caseType === 'edit') {
-      getFile(localStorage.caseData);
-    }
+    getMapData();
   }, []);
 
-  const getFile = async (url) => {
+  const getMapData = async () => {
+    const { data } = await getMapListApi({
+      menuIds: '1495942761243193349',
+      current: 1,
+      size: 1000
+    });
+    const result = [];
+    if (data.code === 200) {
+      for (let i = 0; i < data.data.records.length; i++) {
+        result.push({
+          title: data.data.records[i].name,
+          key: data.data.records[i].id,
+          url: data.data.records[i].mapFileUrl,
+          icon: data.data.records[i].iconUrl
+        });
+      }
+      setMapListData(result);
+    }
+    //先请求地图列表 在请求文件
+    if (localStorage.caseType === 'edit') {
+      getFile(localStorage.caseData, result);
+    } else {
+      if (result.length > 0) {
+        setMapLoadInfo(result[0]);
+      } else {
+        setMapLoadInfo({
+          title: '',
+          key: '',
+          url: '',
+          icon: ''
+        });
+      }
+    }
+  };
+
+  const getFile = async (url, mapData) => {
     fetch(url)
       .then((file_data) => {
         return file_data.text();
       })
       .then((file_text) => {
-        getDataFromYaml(file_text);
+        getDataFromYaml(file_text, mapData);
         setTimeout(() => {
           getDataFromYamlAsnyc(file_text);
         }, 2000);
@@ -246,8 +287,8 @@ const MapEdit = () => {
           const totalLen = getTotalLenByPoint(trajectotyArr);
           tempRouterArr[k].totalLen = totalLen;
           if (tempRouterArr[k].changeProp === 'velocity') {
-            const _vt = tempRouterArr[k].velocity;
-            const _v0 = tempRouterArr[k - 1].velocity;
+            const _vt = tempRouterArr[k].velocity / 3.6; //km/h  换算成  m/s
+            const _v0 = tempRouterArr[k - 1].velocity / 3.6;
             const _s = tempRouterArr[k].totalLen;
             const _t = _s / (_v0 + (_vt - _v0) / 2);
             tempRouterArr[k].time = _t + tempRouterArr[k - 1].time;
@@ -255,10 +296,10 @@ const MapEdit = () => {
           }
           if (tempRouterArr[k].changeProp === 'time' && tempRouterArr[k].time > 0) {
             const _t = tempRouterArr[k].time - tempRouterArr[k - 1].time;
-            const _v0 = tempRouterArr[k - 1].velocity;
+            const _v0 = tempRouterArr[k - 1].velocity / 3.6;
             const _s = tempRouterArr[k].totalLen;
             const _vt = _v0 + 2 * (_s / _t - _v0);
-            tempRouterArr[k].velocity = _vt;
+            tempRouterArr[k].velocity = _vt * 3.6;
             tempRouterArr[k].accelerate = (_vt - _v0) / _t;
           }
         }
@@ -381,9 +422,9 @@ const MapEdit = () => {
       return [...prevState];
     });
     //主车目标点  heading 为 0
-    if (mainCarRoutes.length > 1) {
-      mainCarRoutes[mainCarRoutes.length - 1].heading = 0;
-    }
+    // if (mainCarRoutes.length > 1) {
+    //   mainCarRoutes[mainCarRoutes.length - 1].heading = 0;
+    // }
     setMainCarInfo((prevState) => {
       return {
         ...prevState,
@@ -451,7 +492,7 @@ const MapEdit = () => {
     setSelectedFeatureIndexes(updatedSelectedFeatureIndexes);
   };
 
-  //重新设置虚拟旋转节点
+  //重新设置虚拟旋转节点  包含 节点是否选中
   const setRotatePointToFeatrue = (id = currentElementId, index = currentElementIndex) => {
     setFeaturesCollection((prevState) => {
       let originPoint;
@@ -622,7 +663,7 @@ const MapEdit = () => {
     let heading = 0;
     let calcResult = [];
     //车辆 贴近道路
-    if ((type === RESOURCE_TYPE.MAIN_CAR && isNewElement) || type === RESOURCE_TYPE.ELEMENT_CAR) {
+    if (type === RESOURCE_TYPE.MAIN_CAR || type === RESOURCE_TYPE.ELEMENT_CAR) {
       calcResult = calcMinDistancePoint(coordinates, mapData.referenceLines);
       if (calcResult[2]) {
         coordinates = calcResult[0];
@@ -733,9 +774,9 @@ const MapEdit = () => {
                 index: lenIndex,
                 elementId,
                 selected: false,
-                //默认速度10
+                //默认速度36km/s
                 changeProp: 'velocity',
-                velocity: isNewElement ? 0 : 10
+                velocity: isNewElement ? 0 : 36
               },
               geometry: {
                 type: 'Point',
@@ -1004,9 +1045,27 @@ const MapEdit = () => {
   };
   //拖动  到 map 事件
   const dropHandle = (e) => {
+    // ------- foxfire 禁止 拖拽 搜索功能
+    /* 禁止冒泡行为 */
+    e.stopPropagation();
+    /* 禁止默认行为 */
+    e.preventDefault();
+    // ------- foxfire 禁止 拖拽 搜索功能
+
     if (isPlay) return;
     if (drag_type === RESOURCE_TYPE.MAP) {
       setMapLoadInfo(JSON.parse(e.dataTransfer.getData('text')));
+    } else if (drag_type === RESOURCE_TYPE.TRAFFIC_FLOW) {
+      setTrafficFlowInfo(JSON.parse(e.dataTransfer.getData('text')));
+
+      //重置选中状态
+      setResourceOperateType(RESOURCE_TYPE.TRAFFIC_FLOW);
+      setModeHandle('');
+      setResourceLoadTreeSelectKey([RESOURCE_TYPE.TRAFFIC_FLOW]);
+      setCurrentElementId(-1);
+      setCurrentElementIndex(-1);
+      setSelectIndexHandle(RESOURCE_TYPE.TRAFFIC_FLOW, -1, -1, -1);
+      setRotatePointToFeatrue(-1, -1);
     } else {
       isDropEnd = true;
     }
@@ -1016,6 +1075,8 @@ const MapEdit = () => {
     if (isPlay) return;
     drag_type = type;
     if (drag_type === RESOURCE_TYPE.MAP) {
+      e.dataTransfer.setData('text', JSON.stringify(data));
+    } else if (drag_type === RESOURCE_TYPE.TRAFFIC_FLOW) {
       e.dataTransfer.setData('text', JSON.stringify(data));
     } else {
       //拖动前必须切换到画点模式 才能获取到坐标
@@ -1096,17 +1157,28 @@ const MapEdit = () => {
         features: features
       };
     });
-    // setSelectedFeatureIndexes(
-    //   Array(newLen)
-    //     .fill()
-    //     .map((_, i) => i)
-    // );
   };
+
   const deleteObj = (type, id) => {
     if (isPlay) return;
     if (type === RESOURCE_TYPE.MAIN_CAR) {
       setMainCarInfo({});
-    } else if (type !== RESOURCE_TYPE.TRIGGERS) {
+    }
+    if (type === RESOURCE_TYPE.TRAFFIC_FLOW) {
+      setTrafficFlowInfo({});
+    } else if (type === RESOURCE_TYPE.TRIGGERS) {
+      setTriggersInfo((prevState) => {
+        for (let i = 0; i < prevState.length; i++) {
+          if (prevState[i].id === id) {
+            prevState.splice(i, 1);
+            break;
+          }
+        }
+        return [...prevState];
+      });
+      //切换到非触发器模式
+      setModeHandle('');
+    } else {
       setElementInfo((prevState) => {
         for (let i = 0; i < prevState.length; i++) {
           if (prevState[i].type === type && prevState[i].id === id) {
@@ -1317,7 +1389,12 @@ const MapEdit = () => {
           width: parseInt(triggersInfo[i].size.width),
           height: parseInt(triggersInfo[i].size.height)
         },
-        triggeredId: triggersInfo[i].triggeredId.length > 0 ? triggersInfo[i].triggeredId[0] : null
+        triggeredId:
+          triggersInfo[i].triggeredId.length > 0
+            ? triggersInfo[i].triggeredId[0] === ''
+              ? 0
+              : triggersInfo[i].triggeredId[0]
+            : 0
       });
     }
     yamlData.Agents = [];
@@ -1327,6 +1404,7 @@ const MapEdit = () => {
         mainCarInfo.routes[i].position.x,
         mainCarInfo.routes[i].position.y
       );
+      mainCarInfo.routes[i].velocity = mainCarInfo.routes[i].velocity / 3.6;
       mainCarRouter.push({
         ...mainCarInfo.routes[i],
         position: { x: metersPosition.x, y: metersPosition.y }
@@ -1367,6 +1445,7 @@ const MapEdit = () => {
             return;
           }
         }
+        elementInfo[i].routes[j].velocity = elementInfo[i].routes[j].velocity / 3.6;
         delete elementInfo[i].routes[j].changeProp;
         delete elementInfo[i].routes[j].meters;
         elementRouter.push({
@@ -1386,9 +1465,27 @@ const MapEdit = () => {
         triggers: formatTrigger(elementInfo[i].triggers)
       });
     }
+
+    if (trafficFlowInfo.title) {
+      yamlData.TrafficFlow = {
+        vehicle: {
+          proportion: {}
+        },
+        bicycle: {},
+        pedestrian: {}
+      };
+      yamlData.TrafficFlow.vehicle.density = trafficFlowInfo.vehicle;
+      yamlData.TrafficFlow.vehicle.proportion.private = trafficFlowInfo.proportion.private;
+      yamlData.TrafficFlow.vehicle.proportion.business = trafficFlowInfo.proportion.business;
+      yamlData.TrafficFlow.vehicle.proportion.engineering = trafficFlowInfo.proportion.engineering;
+      yamlData.TrafficFlow.bicycle.density = trafficFlowInfo.bicycle;
+      yamlData.TrafficFlow.pedestrian.density = trafficFlowInfo.pedestrian;
+    }
+
     const yamlDoc = new YAML.Document();
     yamlDoc.contents = yamlData;
     let doc = yamlDoc.toString();
+    console.log(doc);
 
     if (isExit) {
       //退出编辑器 有修改 就弹窗提示
@@ -1420,18 +1517,12 @@ const MapEdit = () => {
     if (localStorage.caseType === 'edit') {
       formData.append('id', caseInfo.id);
     }
-    if (disabledSaveBtn) {
-      return;
-    }
-    disabledSaveBtn = true;
     let data = {};
     if (localStorage.caseType === 'edit') {
       data = await updateApi(formData);
     } else {
       data = await saveApi(formData);
     }
-
-    disabledSaveBtn = false;
     if (data.data.code === 200) {
       lastSaveYaml = doc;
       setIsModalVisible(false);
@@ -1442,7 +1533,8 @@ const MapEdit = () => {
         window.close();
       } else {
         localStorage.caseType = 'edit';
-        caseInfo.id = data.data.data;
+        caseInfo.id = data.data.data.id;
+        localStorage.caseData = data.data.data.caseFileUrl;
         localStorage.caseInfo = JSON.stringify(caseInfo);
         if (isCreateTask) {
           createTask();
@@ -1522,13 +1614,12 @@ const MapEdit = () => {
     setIsTaskModalVisible(false);
   };
 
-  const getDataFromYaml = (yaml) => {
+  const getDataFromYaml = (yaml, mapData) => {
     const editData = YAML.parse(yaml);
     lastSaveYaml = YAML.stringify(editData);
-
-    for (let i = 0; i < Resource_list_map.length; i++) {
-      if (Resource_list_map[i].url === editData.MapFileName) {
-        setMapLoadInfo(Resource_list_map[i]);
+    for (let i = 0; i < mapData.length; i++) {
+      if (mapData[i].url === editData.MapFileName) {
+        setMapLoadInfo(mapData[i]);
       }
     }
     for (let i = 0; i < editData.Triggers.length; i++) {
@@ -1589,7 +1680,6 @@ const MapEdit = () => {
                     index: editData.Agents[i].routes[j].index,
                     elementId: editData.Agents[i].id,
                     selected: editData.Agents[i].routes[j].selected,
-                    //默认速度10
                     changeProp: 'velocity',
                     accelerate: editData.Agents[i].routes[j].accelerate,
                     velocity: editData.Agents[i].routes[j].velocity
@@ -1638,7 +1728,6 @@ const MapEdit = () => {
                     index: editData.Agents[i].routes[j].index,
                     elementId: editData.Agents[i].id,
                     selected: editData.Agents[i].routes[j].selected,
-                    //默认速度10
                     changeProp: 'velocity',
                     accelerate: editData.Agents[i].routes[j].accelerate,
                     velocity: editData.Agents[i].routes[j].velocity
@@ -1713,6 +1802,50 @@ const MapEdit = () => {
     return resultInfo;
   };
 
+  const tipFormatter = (value) => {
+    return value + '%';
+  };
+
+  const sliderChangeTypeHandle = (value) => {
+    setTrafficFlowInfo((prevState) => {
+      return {
+        ...prevState,
+        proportion: {
+          private: value[0],
+          business: value[1] - value[0],
+          engineering: 100 - value[1]
+        }
+      };
+    });
+  };
+
+  const sliderChangeCarHandle = (value) => {
+    setTrafficFlowInfo((prevState) => {
+      return {
+        ...prevState,
+        vehicle: value
+      };
+    });
+  };
+
+  const sliderChangePeopleHandle = (value) => {
+    setTrafficFlowInfo((prevState) => {
+      return {
+        ...prevState,
+        pedestrian: value
+      };
+    });
+  };
+
+  const sliderChangeBicycleHandle = (value) => {
+    setTrafficFlowInfo((prevState) => {
+      return {
+        ...prevState,
+        bicycle: value
+      };
+    });
+  };
+
   //------------------------------渲染事件--------------------------------
   //加载的资源 文件树
   const renderResourceLoadTree = useMemo(() => {
@@ -1758,6 +1891,14 @@ const MapEdit = () => {
         children: triggersArr
       });
     }
+    if (trafficFlowInfo.title) {
+      result.push({
+        title: '交通流',
+        key: RESOURCE_TYPE.TRAFFIC_FLOW,
+        type: RESOURCE_TYPE.TRAFFIC_FLOW
+      });
+    }
+    //有新元素后 重新渲染   才可以默认打开
     if (lastFileLen !== len) {
       setRenderFlag(false);
       setTimeout(() => {
@@ -1766,12 +1907,18 @@ const MapEdit = () => {
     }
     lastFileLen = len;
     return result;
-  }, [mapLoadInfo.title, mainCarInfo.title, elementInfo.length, triggersInfo.length]);
+  }, [
+    mapLoadInfo.title,
+    mainCarInfo.title,
+    elementInfo.length,
+    triggersInfo.length,
+    trafficFlowInfo
+  ]);
   //文件库
   const renderResourceList = useMemo(() => {
     let Resource_list = [];
     if (resourceLibType === RESOURCE_TYPE.MAP) {
-      Resource_list = Resource_list_map;
+      Resource_list = mapListData;
     } else if (resourceLibType === RESOURCE_TYPE.MAIN_CAR) {
       Resource_list = Resource_list_main_car;
     } else if (resourceLibType === RESOURCE_TYPE.ELEMENT_CAR) {
@@ -1784,7 +1931,10 @@ const MapEdit = () => {
       Resource_list = Resource_list_element_bicycle;
     } else if (resourceLibType === RESOURCE_TYPE.TRIGGERS) {
       Resource_list = Resource_list_triggers;
+    } else if (resourceLibType === RESOURCE_TYPE.TRAFFIC_FLOW) {
+      Resource_list = Resource_traffic_flow;
     }
+
     return Resource_list.map((item, index) => {
       return (
         <div key={index} className='resource-list-item'>
@@ -1801,7 +1951,7 @@ const MapEdit = () => {
         </div>
       );
     });
-  }, [resourceLibType, isPlay]);
+  }, [resourceLibType, isPlay, mapListData]);
 
   //触发器列表
   const triggersSelect = useMemo(() => {
@@ -1851,6 +2001,9 @@ const MapEdit = () => {
           break;
         }
       }
+    }
+    if (resourceOperateType === RESOURCE_TYPE.TRAFFIC_FLOW) {
+      selectInfo = trafficFlowInfo;
     }
     return (
       <React.Fragment>
@@ -1935,7 +2088,9 @@ const MapEdit = () => {
             </div>
           </div>
         ) : null}
-        {selectInfo.type !== RESOURCE_TYPE.TRIGGERS && resourceOperateType !== RESOURCE_TYPE.MAP ? (
+        {selectInfo.type !== RESOURCE_TYPE.TRIGGERS &&
+        resourceOperateType !== RESOURCE_TYPE.MAP &&
+        resourceOperateType !== RESOURCE_TYPE.TRAFFIC_FLOW ? (
           <div className='tip'>路径点（按下ctrl加点）</div>
         ) : null}
         {selectInfo.routes && selectInfo.routes.length > 0 ? (
@@ -1977,6 +2132,7 @@ const MapEdit = () => {
                           changePropsHandle(e, index, selectInfo.id, 'velocity');
                         }}
                       ></InputNumber>
+                      &nbsp;km/h
                     </span>
                   </div>
                   <div>
@@ -2119,6 +2275,68 @@ const MapEdit = () => {
             </div>
           </React.Fragment>
         ) : null}
+        {resourceOperateType == RESOURCE_TYPE.TRAFFIC_FLOW && selectInfo.title ? (
+          <React.Fragment>
+            <div className='traffic-info'>
+              <div className='tip'>车辆类型比例</div>
+              <div className='slider-box'>
+                <div className='box box-width-all'>
+                  <Slider
+                    range
+                    getPopupContainer={(trigger) => trigger.parentNode}
+                    defaultValue={[
+                      trafficFlowInfo.proportion.private,
+                      trafficFlowInfo.proportion.private + trafficFlowInfo.proportion.business
+                    ]}
+                    onAfterChange={sliderChangeTypeHandle}
+                    tooltipVisible
+                    tipFormatter={tipFormatter}
+                  />
+                </div>
+                <div className='type-line'>
+                  <div>家用</div>
+                  <div>商用</div>
+                  <div>工程用</div>
+                </div>
+              </div>
+              <div className='tip border-top'>元素密度</div>
+              <div className='slider-box'>
+                <div className='txt'>车辆</div>
+                <div className='box'>
+                  <Slider
+                    tooltipVisible
+                    defaultValue={trafficFlowInfo.vehicle}
+                    getPopupContainer={(trigger) => trigger.parentNode}
+                    onAfterChange={sliderChangeCarHandle}
+                    tipFormatter={tipFormatter}
+                  />
+                </div>
+              </div>
+              <div className='slider-box'>
+                <div className='txt'>行人</div>
+                <div className='box'>
+                  <Slider
+                    defaultValue={trafficFlowInfo.pedestrian}
+                    onAfterChange={sliderChangePeopleHandle}
+                    tooltipVisible
+                    tipFormatter={tipFormatter}
+                  />
+                </div>
+              </div>
+              <div className='slider-box'>
+                <div className='txt'>自行车</div>
+                <div className='box'>
+                  <Slider
+                    defaultValue={trafficFlowInfo.bicycle}
+                    tooltipVisible
+                    onAfterChange={sliderChangeBicycleHandle}
+                    tipFormatter={tipFormatter}
+                  />
+                </div>
+              </div>
+            </div>
+          </React.Fragment>
+        ) : null}
       </React.Fragment>
     );
   }, [
@@ -2128,6 +2346,7 @@ const MapEdit = () => {
     mainCarInfo,
     elementInfo,
     triggersInfo,
+    trafficFlowInfo,
     isPlay
   ]);
 
@@ -2169,7 +2388,7 @@ const MapEdit = () => {
               treeData={Resource_lib_tree}
             />
           </div>
-          <div>
+          {/* <div>
             <Select
               defaultValue='view'
               value={modeValue}
@@ -2188,7 +2407,7 @@ const MapEdit = () => {
               <Option value='translateAndscale'>移动+缩放</Option>
               <Option value='translateAndRotateMode'>移动+旋转</Option>
             </Select>
-          </div>
+          </div> */}
         </div>
         <div className='center-box'>
           <div className='map-box-wrap'>

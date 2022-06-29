@@ -34,7 +34,7 @@ const Sidebar = () => {
   return (
     <React.Fragment>
       {selectedKeys.length > 0 ? (
-        <Menu defaultSelectedKeys={selectedKeys} defaultOpenKeys={[]} mode='inline'>
+        <Menu selectedKeys={selectedKeys} mode='inline'>
           {getMenu(menuConfig)}
         </Menu>
       ) : null}

@@ -5,8 +5,8 @@ import menuConfig from '@/config/menu.config.js';
 import Loadable from 'react-loadable';
 import Loading from '@/components/Loading';
 import MapEdit from '@/routes/mapEdit';
+import View from '@/routes/mapEdit/view';
 import Doc from '@/routes/doc';
-import Test from '@/routes/test';
 const getMenuRoute = (menuData) => {
   return menuData.map((item) => {
     if (item.subMenu) {
@@ -35,8 +35,8 @@ function routerConfig() {
         <Route path={'/login'} exact component={Login} />
         <Route path={'/play'} exact component={Play} />
         <Route path={'/map-edit'} exact component={MapEdit} />
+        <Route path={'/view'} exact component={View} />
         <Route path={'/doc'} exact component={Doc} />
-        <Route path={'/test'} exact component={Test} />
         <CommonLayout>
           <Switch>
             {getMenuRoute(menuConfig)} <Redirect to='/case-lib' />

@@ -7,12 +7,15 @@
     flex: 0 0 300px;
     border-right: 1px solid #ccc;
     .title {
+      box-sizing: border-box;
       height: 44px;
       line-height: 44px;
       border-bottom: 1px solid #ccc;
       padding-left: 16px;
+      border-top: 1px solid #ccc;
     }
     .btn-menu {
+      box-sizing: border-box;
       height: 44px;
       line-height: 44px;
       padding: 0 16px;
@@ -31,9 +34,16 @@
       }
     }
     .file-list {
-      height: calc(100vh - 132px);
+      height: calc(70vh - 132px);
       overflow-y: scroll;
+      background-color: white;
     }
+    .quick-test-file-list {
+      height: calc(30vh - 88px);
+      overflow-y: scroll;
+      background-color: white;
+    }
+    
   }
   .content-box {
     flex: 1;
@@ -43,6 +53,7 @@
       height: 100%;
 
       .menu-box {
+        box-sizing: border-box;
         flex: 0 0 100px;
         border-bottom: 1px solid #ccc;
         display: flex;
@@ -63,30 +74,111 @@
         }
       }
       .search-box {
+        box-sizing: border-box;
         padding-left: 20px;
         flex: 0 0 100px;
         border-bottom: 1px solid #ccc;
         display: flex;
         align-items: center;
+        justify-content: flex-start;
         .select-box {
-          width: 300px;
-          span {
+          width: 250px;
+          &.time{
+            width: 410px;
+          }
+          .title {
             margin-right: 5px;
+            display: inline-block;
           }
-          &.reset-btn {
-            width: 100px;
-            div {
-              padding-left: 3px;
-            }
+          .val{
+            width: 340px;
+            display: inline-block;
           }
+          .tag{
+            width: 200px;
+          }
+          
         }
-        .ant-select {
-          width: 200px !important;
+        .btn-box{
+          width: 50px;
         }
       }
       .list-box {
-        flex: 1;
+        height: calc(70vh - 288px);
         overflow-y: scroll;
+      }
+      .list-tool-bar{
+        box-sizing: border-box;
+        height: 44px;
+        line-height: 44px;
+        position: relative;
+        .page-bar{
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+        }
+        .btn-bar{
+          position: absolute;
+          right: 20px;
+          .tips{
+            margin-left: 10px;
+          }
+          .run-btn{
+            margin-left: 10px;
+          }
+          .add-test-btn{
+            margin-left: 10px;
+          }
+        }
+      }
+      .quick-test-title{
+        box-sizing: border-box;
+        height: 44px;
+        line-height: 44px;
+        border-bottom: 1px solid #ccc;
+        padding-left: 16px;
+        border-top: 1px solid #ccc;
+        .manage-btn{
+          margin-right: 20px;
+          float: right;
+        }
+      }
+      .quick-test-list-box{
+        height: calc(30vh - 88px);
+        background-color: white;
+        overflow-y: scroll;
+        .list-box-item{
+          display: flex;
+          justify-content: flex-start;
+          flex-wrap: wrap;
+          .item{
+            height: 44px;
+            line-height: 44px;
+            padding-left: 16px;
+            flex: 0 1 16.66%;
+            box-sizing: border-box;
+          }
+        }
+      }
+      .quick-test-list-tool-bar{
+        box-sizing: border-box;
+        height: 44px;
+        line-height: 44px;
+        position: relative;
+        .page-bar{
+          position: absolute;
+          left: 50%;
+          top: 50%;
+          transform: translate(-50%, -50%);
+        }
+        .btn-bar{
+          position: absolute;
+          right: 20px;
+          .btn{
+            margin-left: 10px;
+          }
+        }
       }
     }
   }

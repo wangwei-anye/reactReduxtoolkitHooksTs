@@ -15,7 +15,7 @@ const config = {
     contentBase: path.join(__dirname, 'dist'),
     historyApiFallback: true,
     compress: true,
-    host: '192.168.112.113',
+    host: '192.168.112.145',
     port: 8088,
     hot: true
   }

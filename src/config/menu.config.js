@@ -2,7 +2,8 @@ import React from 'react';
 import {
   ScheduleOutlined,
   FolderOpenOutlined,
-  FormOutlined,
+  InteractionOutlined,
+  PullRequestOutlined,
   FolderOutlined
 } from '@ant-design/icons';
 import Loadable from 'react-loadable';
@@ -10,7 +11,7 @@ import Loading from '@/components/Loading';
 
 import CaseLib from '@/routes/caseLib';
 import Resource from '@/routes/resource';
-import Test from '@/routes/test';
+import Docker from '@/routes/docker';
 // const CaseLib = Loadable({
 //   loader: () => import('@/routes/caseLib'),
 //   loading: Loading,
@@ -22,14 +23,14 @@ const Task = Loadable({
   delay: 300
 });
 
+const Build = Loadable({
+  loader: () => import('@/routes/build'),
+  loading: Loading,
+  delay: 300
+});
+
 // const MapEdit = Loadable({
 //   loader: () => import('@/routes/mapEdit'),
-//   loading: Loading,
-//   delay: 300
-// });
-
-// const Test = Loadable({
-//   loader: () => import('@/routes/test'),
 //   loading: Loading,
 //   delay: 300
 // });
@@ -55,12 +56,19 @@ export default [
     icon: <FolderOutlined />,
     url: '/resource',
     component: Resource
+  },
+  {
+    id: 'build',
+    title: '日构建',
+    icon: <PullRequestOutlined />,
+    url: '/build-list',
+    component: Build
+  },
+  {
+    id: 'docker',
+    title: '镜像管理',
+    icon: <InteractionOutlined />,
+    url: '/docker',
+    component: Docker
   }
-  // {
-  //   id: 'test',
-  //   title: '测试',
-  //   icon: <ScheduleOutlined />,
-  //   url: '/test',
-  //   component: Test
-  // }
 ];

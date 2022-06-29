@@ -88,16 +88,33 @@ export const getBezierPointFromFeatures = async (elementInfo, currentElementId) 
   for (let i = 0; i < elementInfo.length; i++) {
     if (!savetrajectotyArr[elementInfo[i].id] || currentElementId === elementInfo[i].id) {
       const pointsArr = [];
-      for (let j = 0; j < elementInfo[i].routes.length; j++) {
-        const meters = GPS.mercator_encrypt(
-          elementInfo[i].routes[j].position.x,
-          elementInfo[i].routes[j].position.y
-        );
-        pointsArr.push({
-          x: meters.x,
-          y: meters.y,
-          heading: elementInfo[i].routes[j].heading
-        });
+      if (elementInfo[i].type === RESOURCE_TYPE.MAIN_CAR) {
+        //主车最后2个节点的线 不画
+        if (elementInfo[i].routes.length > 2) {
+          for (let j = 0; j < elementInfo[i].routes.length - 1; j++) {
+            const meters = GPS.mercator_encrypt(
+              elementInfo[i].routes[j].position.x,
+              elementInfo[i].routes[j].position.y
+            );
+            pointsArr.push({
+              x: meters.x,
+              y: meters.y,
+              heading: elementInfo[i].routes[j].heading
+            });
+          }
+        }
+      } else {
+        for (let j = 0; j < elementInfo[i].routes.length; j++) {
+          const meters = GPS.mercator_encrypt(
+            elementInfo[i].routes[j].position.x,
+            elementInfo[i].routes[j].position.y
+          );
+          pointsArr.push({
+            x: meters.x,
+            y: meters.y,
+            heading: elementInfo[i].routes[j].heading
+          });
+        }
       }
       const trajectotyArr = await getTrajectory(pointsArr);
       savetrajectotyArr[elementInfo[i].id] = trajectotyArr;
@@ -130,7 +147,7 @@ export const formatIconDataFromInfo = (carData) => {
       id: carData.id,
       type: carData.type,
       coordinates: [carData.routes[i].position.x, carData.routes[i].position.y],
-      angle: carData.routes[i].heading,
+      angle: i !== carData.routes.length - 1 || i == 0 ? carData.routes[i].heading : 0,
       icon:
         i !== carData.routes.length - 1 || i == 0
           ? carData.routes[i].selected
