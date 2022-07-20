@@ -3,7 +3,6 @@ import { Tree, Button, message } from 'antd';
 import { DownloadOutlined, DeleteOutlined } from '@ant-design/icons';
 import {
   Resource_lib_tree,
-  Resource_list_map,
   RESOURCE_TYPE,
   Resource_list_main_car,
   Resource_list_element_car,
@@ -19,6 +18,7 @@ import formatDataFromXodr from '@/utils/formatDataFromXodr';
 import { dataURLtoFile } from '@/utils/tools';
 import { uploadMap, getMapListApi, deleteMap } from '@/services/resource';
 import { upload as uploadFile } from '@/services/file';
+import { ASSERT_SERVE } from '@/constants';
 import { GPS } from '../mapEdit/lib/GPS';
 
 import './index.less';
@@ -51,7 +51,7 @@ const Resource = () => {
         result.push({
           id: data.data.records[i].id,
           title: data.data.records[i].name,
-          icon: data.data.records[i].iconUrl,
+          icon: ASSERT_SERVE + data.data.records[i].iconUrl,
           readOnly: data.data.records[i].readOnly,
           active: false
         });

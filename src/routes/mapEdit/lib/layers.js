@@ -48,7 +48,7 @@ export const createMapLayer = (mapData, isShowArrow = true) => {
     pickable: true,
     zIndex: -1
   });
-  if (isShowArrow) {
+  if (isShowArrow && mapData.arrowLayer) {
     for (let i = 0; i < mapData.arrowLayer.length; i++) {
       mapData.arrowLayer[i].angle = getAngleByTwoPoint(
         mapData.arrowLayer[i].angleArr[0],

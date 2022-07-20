@@ -1,0 +1,18 @@
+import { WEB_SOCKET } from '@/constants';
+import ee, { TASK_REFRESH } from '@/utils/events';
+
+let ws = null;
+export const initWs = () => {
+  if (ws) {
+    return ws;
+  }
+  ws = new WebSocket(`${WEB_SOCKET}/websocket/${localStorage.token}`);
+
+  ws.onopen = function () {
+    // ws.send('from client: hello');
+  };
+  ws.onmessage = function (e) {
+    ee.emit(TASK_REFRESH, e);
+  };
+  return ws;
+};

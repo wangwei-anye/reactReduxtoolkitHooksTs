@@ -59,7 +59,7 @@ export default function request(url, options) {
   const fixUrl = url.replace(/\/\//g, '/').replace(/:\/([^/])/, '://$1');
   // 非GET方式不允许缓存
   if (settings.method.toUpperCase() !== 'GET') {
-    settings['Cache-Control'] = 'no-cache';
+    settings['cache'] = 'no-cache';
   }
   return fetch(fixUrl, settings)
     .then(checkStatus)

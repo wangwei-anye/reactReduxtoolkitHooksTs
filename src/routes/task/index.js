@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useSelector, useDispatch } from 'react-redux';
 import { Table, Card, Tabs, Button, Input, Divider, Progress, Spin, message } from 'antd';
 import { PlayCircleOutlined } from '@ant-design/icons';
@@ -14,12 +14,15 @@ import {
   CloseCircleFilled,
   LoadingOutlined,
   RightOutlined,
-  DownOutlined
+  DownOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 import { DEFAULT_PAGE_SIZE } from '@/constants';
 import { STATE_DOING, STATE_COMPLETE } from './constants';
 import { selectTask, getData, clearList } from './slice';
 import { deleteTaskApi } from '@/services/task';
+import { initWs } from '@/utils/websocket';
+import ee, { TASK_REFRESH } from '@/utils/events';
 
 import './index.less';
 const { TabPane } = Tabs;
@@ -198,6 +201,25 @@ const Task = () => {
       }
     },
     {
+      title: '查看日志',
+      key: 'log',
+      render: (item) => {
+        return (
+          <React.Fragment>
+            {item.logUrl ? (
+              <span
+                onClick={() => {
+                  toLog(item);
+                }}
+              >
+                <FileTextOutlined style={{ fontSize: 24, cursor: 'pointer' }} />
+              </span>
+            ) : null}
+          </React.Fragment>
+        );
+      }
+    },
+    {
       title: '算法',
       dataIndex: 'algorithm',
       key: 'algorithm'
@@ -207,21 +229,43 @@ const Task = () => {
     window.open(`/play?fileUrl=${playback}&trafficUrl=${trafficLightsPlayback}&mapName=${mapName}`);
   };
 
+  const toLog = (item) => {
+    window.open(`/log?name=${item.name}&url=${item.logUrl}`);
+  };
+
   useEffect(() => {
     query(1);
   }, [tabkey]);
 
+  // useEffect(() => {
+  //   let InterId;
+  //   if (tabkey === '1') {
+  //     InterId = setInterval(() => {
+  //       query(current, false);
+  //     }, 10000);
+  //   }
+  //   return () => {
+  //     clearInterval(InterId);
+  //   };
+  // }, [tabkey]);
+
   useEffect(() => {
-    let InterId;
-    if (tabkey === '1') {
-      InterId = setInterval(() => {
-        query(current, false);
-      }, 10000);
-    }
+    initWs();
+    ee.on(TASK_REFRESH, taskRefresh);
     return () => {
-      clearInterval(InterId);
+      ee.removeListener(TASK_REFRESH, taskRefresh);
     };
   }, [tabkey]);
+
+  const taskRefresh = (e) => {
+    const data = JSON.parse(e.data);
+    //测试任务刷新
+    if (data.messageType && data.messageType === 1) {
+      if (tabkey === '1') {
+        query(1);
+      }
+    }
+  };
 
   const paginationChangeHandle = (value) => {
     setCurrent(value);

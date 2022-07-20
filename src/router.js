@@ -7,6 +7,7 @@ import Loading from '@/components/Loading';
 import MapEdit from '@/routes/mapEdit';
 import View from '@/routes/mapEdit/view';
 import Doc from '@/routes/doc';
+import Log from '@/routes/log';
 const getMenuRoute = (menuData) => {
   return menuData.map((item) => {
     if (item.subMenu) {
@@ -37,6 +38,7 @@ function routerConfig() {
         <Route path={'/map-edit'} exact component={MapEdit} />
         <Route path={'/view'} exact component={View} />
         <Route path={'/doc'} exact component={Doc} />
+        <Route path={'/log'} exact component={Log} />
         <CommonLayout>
           <Switch>
             {getMenuRoute(menuConfig)} <Redirect to='/case-lib' />

@@ -1,6 +1,16 @@
 import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { useHistory } from 'react-router-dom';
-import { Table, Button, Select, Modal, message } from 'antd';
+import {
+  Table,
+  Button,
+  Select,
+  Modal,
+  message,
+  Input,
+  DatePicker,
+  Pagination,
+  Checkbox
+} from 'antd';
 import {
   ReloadOutlined,
   DeleteOutlined,
@@ -8,7 +18,9 @@ import {
   DownloadOutlined,
   ExportOutlined,
   PlusOutlined,
-  FolderViewOutlined
+  FolderViewOutlined,
+  RedoOutlined,
+  SearchOutlined
 } from '@ant-design/icons';
 import {} from './slice';
 import { saveApi } from '@/services/mapEdit';
@@ -19,6 +31,7 @@ import { DEFAULT_PAGE_SIZE } from '@/constants';
 
 import './index.less';
 const { Option } = Select;
+const { RangePicker } = DatePicker;
 const columns = [
   {
     title: 'ID',
@@ -50,18 +63,31 @@ const caseBox = (props, ref) => {
   const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
   const [isCaseModalVisible, setIsCaseModalVisible] = useState(false);
   const [current, setCurrent] = useState(1);
+  // const [quickTestCurrent, setQuickTestCurrent] = useState(1);
   const [algorithmArr, setAlgorithmArr] = useState([]);
   const [algorithm, setAlgorithm] = useState();
   const [taskName, setTaskName] = useState();
   const [caseInfo, setCaseInfo] = useState({
     caseName: '',
-    caseTag: '',
-    caseDes: ''
+    caseTag: ''
   });
   const [disabledBtn, setDisabledBtn] = useState(false);
+  const [inputTime, setInputTime] = useState(null);
+  const [inputTimeStr, setInputTimeStr] = useState(null);
+  const [inputTag, setInputTag] = useState(null);
+
   const history = useHistory();
 
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+
+  const [isManage, setIsManage] = useState(false);
+  const [checkFlagList, setCheckFlagList] = useState([]);
+  const [removeFlagList, setRemoveFlagList] = useState([]);
+  const [createTaskType, setCreateTaskType] = useState('');
+  const CREATE_TASK_TYPE = {
+    CASE: 'case',
+    QUICK_TEST: 'quick_test'
+  };
 
   const getAlgorithmHandle = async () => {
     const { data } = await getAlgorithm();
@@ -72,10 +98,6 @@ const caseBox = (props, ref) => {
   useEffect(() => {
     getAlgorithmHandle();
   }, []);
-
-  function handleChange(value) {
-    console.log(`selected ${value}`);
-  }
 
   const onSelectChange = (selectedRowKeys) => {
     setSelectedRowKeys(selectedRowKeys);
@@ -169,9 +191,30 @@ const caseBox = (props, ref) => {
       message.info('请选择案例');
       return;
     }
+    setCreateTaskType(CREATE_TASK_TYPE.CASE);
     setTaskName('task_' + new Date().toLocaleString());
     setIsTaskModalVisible(true);
   };
+
+  const runQuickTestHandle = () => {
+    if (props.quickTestListData.records.length === 0) {
+      message.info('该测试集为空');
+      return;
+    }
+    setCreateTaskType(CREATE_TASK_TYPE.QUICK_TEST);
+    setTaskName('task_' + new Date().toLocaleString());
+    setIsTaskModalVisible(true);
+  };
+
+  const addToQuickTest = () => {
+    if (selectedRowKeys.length === 0) {
+      message.info('请选择案例');
+      return;
+    }
+    props.addToTestHandle(selectedRowKeys.join(','));
+    setSelectedRowKeys([]);
+  };
+
   //任务
   const modalTaskHandleOk = async () => {
     if (!taskName) {
@@ -182,15 +225,22 @@ const caseBox = (props, ref) => {
       message.info('请选择算法');
       return;
     }
-    if (selectedRowKeys.length === 0) {
-      message.info('请选择案例');
-      return;
+
+    let caseIds = '';
+    if (createTaskType === CREATE_TASK_TYPE.CASE) {
+      caseIds = selectedRowKeys.join(',');
+    } else {
+      const quickTestKey = [];
+      for (let i = 0; i < props.quickTestListData.records.length; i++) {
+        quickTestKey.push(props.quickTestListData.records[i].id);
+      }
+      caseIds = quickTestKey.join(',');
     }
     setDisabledBtn(true);
     const { data } = await createTaskApi({
       algorithm: algorithm,
       name: taskName,
-      caseIds: selectedRowKeys.join(',')
+      caseIds: caseIds
     });
     setDisabledBtn(false);
     if (data.code === 200) {
@@ -237,8 +287,7 @@ const caseBox = (props, ref) => {
     setCaseInfo((item) => {
       return {
         caseName: e.target.value,
-        caseTag: item.caseTag,
-        caseDes: item.caseDes
+        caseTag: item.caseTag
       };
     });
   };
@@ -247,18 +296,7 @@ const caseBox = (props, ref) => {
     setCaseInfo((item) => {
       return {
         caseName: item.caseName,
-        caseTag: e.target.value,
-        caseDes: item.caseDes
-      };
-    });
-  };
-
-  const caseDesChangeHandle = (e) => {
-    setCaseInfo((item) => {
-      return {
-        caseName: item.caseName,
-        caseTag: item.caseTag,
-        caseDes: e.target.value
+        caseTag: e.target.value
       };
     });
   };
@@ -267,17 +305,37 @@ const caseBox = (props, ref) => {
     // changeVal 就是暴露给父组件的方法
     setCurrent: (newVal) => {
       setCurrent(newVal);
+    },
+    getParam: () => {
+      return {
+        createTimeStart: inputTimeStr && inputTimeStr[0],
+        createTimeEnd: inputTimeStr && inputTimeStr[1],
+        tags: inputTag
+      };
     }
   }));
 
   const paginationChangeHandle = (value) => {
     setCurrent(value);
-    props.pageIndexChange(value);
+    props.pageIndexChange(value, {
+      createTimeStart: inputTimeStr && inputTimeStr[0],
+      createTimeEnd: inputTimeStr && inputTimeStr[1],
+      tags: inputTag
+    });
   };
+
+  // const quickTestpaginationChangeHandle = (value) => {
+  //   setQuickTestCurrent(value);
+  //   props.quickTestPageIndexChange(value);
+  // };
 
   const refreshHandle = () => {
     setCurrent(1);
-    props.pageIndexChange(1);
+    props.pageIndexChange(1, {
+      createTimeStart: inputTimeStr && inputTimeStr[0],
+      createTimeEnd: inputTimeStr && inputTimeStr[1],
+      tags: inputTag
+    });
   };
 
   const refUpload = useRef();
@@ -285,15 +343,86 @@ const caseBox = (props, ref) => {
     refUpload.current.click();
   };
   const uploadHandle = async (e) => {
+    const type = e.target.files[0].name.split('.')[1];
     const formData = new FormData();
     formData.append('menuId', props.menuId);
-    formData.append('type', 'xosc');
+    formData.append('type', type);
     formData.append('file', e.target.files[0]);
     const { data } = await saveApi(formData);
     if (data.code === 200) {
       message.success('导入成功!');
       refreshHandle();
     }
+  };
+
+  const inputTimeChangeHandle = (val, dateString) => {
+    setInputTime(val);
+    setInputTimeStr(dateString);
+  };
+
+  const inputTagChangeHandle = (e) => {
+    setInputTag(e.target.value);
+  };
+
+  const searchHandle = () => {
+    setCurrent(1);
+    props.pageIndexChange(1, {
+      createTimeStart: inputTimeStr && inputTimeStr[0],
+      createTimeEnd: inputTimeStr && inputTimeStr[1],
+      tags: inputTag
+    });
+  };
+
+  const resetHandle = () => {
+    setInputTime(null);
+    setInputTimeStr(null);
+    setInputTag(null);
+    setCurrent(1);
+    props.pageIndexChange(1, {
+      createTimeStart: null,
+      createTimeEnd: null,
+      tags: null
+    });
+  };
+
+  const changeCheckBoxHandle = (e, item) => {
+    if (e.target.checked) {
+      setCheckFlagList((prevState) => {
+        return [...prevState, item.id];
+      });
+    } else {
+      setCheckFlagList((prevState) => {
+        prevState.splice(prevState.indexOf(item.id), 1);
+        return [...prevState];
+      });
+    }
+  };
+
+  const saveQuickTestListHandle = async () => {
+    const caseIds = [];
+    for (let i = 0; i < props.quickTestListData.records.length; i++) {
+      if (!removeFlagList.includes(props.quickTestListData.records[i].id)) {
+        caseIds.push(props.quickTestListData.records[i].id);
+      }
+    }
+    const data = await props.manageTestHandle(caseIds.join(','));
+    if (data === 'success') {
+      setIsManage(false);
+      setRemoveFlagList([]);
+      setCheckFlagList([]);
+    }
+  };
+  const cancelQuickTestListHandle = () => {
+    setIsManage(false);
+    setRemoveFlagList([]);
+    setCheckFlagList([]);
+  };
+
+  const removeQuickTestListHandle = () => {
+    setRemoveFlagList((prevState) => {
+      return [...prevState, ...checkFlagList];
+    });
+    setCheckFlagList([]);
   };
 
   return (
@@ -323,7 +452,7 @@ const caseBox = (props, ref) => {
             ref={refUpload}
             style={{ display: 'none' }}
             onChange={uploadHandle}
-            accept='.xosc'
+            accept='.xosc,.yaml'
             type='file'
           ></input>
           <div className='item'>
@@ -376,58 +505,138 @@ const caseBox = (props, ref) => {
         </div>
       </div>
       <div className='search-box'>
-        {/* <div className='select-box'>
-          <span>文件夹:</span>
-          <Select
-            mode='multiple'
-            allowClear
-            style={{ width: '100%' }}
-            placeholder='Please select'
-            defaultValue={['a10', 'c12']}
-            onChange={handleChange}
-          >
-            {children}
-          </Select>
+        <div className='select-box time'>
+          <span className='title'>创建时间:</span>
+          <span className='val'>
+            <RangePicker
+              showTime
+              value={inputTime}
+              placeholder={['开始日期', '结束日期']}
+              onChange={inputTimeChangeHandle}
+            />
+          </span>
         </div>
         <div className='select-box'>
-          <span>案例类型:</span>
-          <Select
-            mode='multiple'
-            allowClear
-            style={{ width: '100%' }}
-            placeholder='Please select'
-            defaultValue={['a10', 'c12']}
-            onChange={handleChange}
-          >
-            {children}
-          </Select>
-        </div> */}
-        {/* <div className='select-box reset-btn'>
-          <Button type='primary' icon={<RedoOutlined />} size={20}></Button>
+          <span className='title'>标签:</span>
+          <span className='val tag'>
+            <Input value={inputTag} onChange={inputTagChangeHandle}></Input>{' '}
+          </span>
+        </div>
+        <div className='btn-box btn'>
+          <Button type='primary' onClick={searchHandle} icon={<SearchOutlined />}></Button>
+          <div>搜索</div>
+        </div>
+        <div className='btn-box btn'>
+          <Button type='primary' onClick={resetHandle} icon={<RedoOutlined />} size={20}></Button>
           <div>重置</div>
-        </div> */}
-        <div className='select-box run-btn'>
-          <span>已选案例数：{selectedRowKeys.length}</span>
-          <Button type='primary' size={20} onClick={run}>
-            运行
-          </Button>
         </div>
       </div>
       <div className='list-box'>
         <Table
           rowSelection={rowSelection}
-          pagination={{
-            current,
-            pageSize: DEFAULT_PAGE_SIZE,
-            position: ['bottomCenter'],
-            total: props.listData.total,
-            showSizeChanger: false,
-            onChange: paginationChangeHandle
-          }}
+          pagination={false}
+          // pagination={{
+          //   current,
+          //   pageSize: DEFAULT_PAGE_SIZE,
+          //   position: ['bottomCenter'],
+          //   total: props.listData.total,
+          //   showSizeChanger: false,
+          //   onChange: paginationChangeHandle
+          // }}
           columns={columns}
           rowKey='id'
           dataSource={props.listData.records}
         />
+      </div>
+      <div className='list-tool-bar'>
+        <div className='page-bar'>
+          <Pagination
+            current={current}
+            pageSize={DEFAULT_PAGE_SIZE}
+            total={props.listData.total}
+            showSizeChanger={false}
+            onChange={paginationChangeHandle}
+          ></Pagination>
+        </div>
+        <div className='btn-bar'>
+          <span className='tips'>已选案例数：{selectedRowKeys.length}</span>
+          <Button className='run-btn' type='primary' size={20} onClick={run}>
+            运行
+          </Button>
+          <Button className='add-test-btn' type='primary' size={20} onClick={addToQuickTest}>
+            加入快速测试集
+          </Button>
+        </div>
+      </div>
+      <div className='quick-test-title'>
+        <span>测试集({props.quickTestListData.records.length})</span>
+        <div className='manage-btn'>
+          {isManage ? null : (
+            <Button
+              type='primary'
+              size={20}
+              onClick={() => {
+                setIsManage(true);
+              }}
+            >
+              管理
+            </Button>
+          )}
+        </div>
+      </div>
+      <div className='quick-test-list-box'>
+        <div className='list-box-item'>
+          {props.quickTestListData.records.map((item, index) => {
+            if (removeFlagList.includes(item.id)) {
+              return null;
+            }
+            return (
+              <div className='item' key={index}>
+                {isManage ? (
+                  <Checkbox
+                    onChange={(e) => {
+                      changeCheckBoxHandle(e, item);
+                    }}
+                  >
+                    {item.name}
+                  </Checkbox>
+                ) : (
+                  <span>{item.name}</span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+      <div className='quick-test-list-tool-bar'>
+        {/* <div className='page-bar'>
+          <Pagination
+            current={quickTestCurrent}
+            pageSize={DEFAULT_PAGE_SIZE}
+            total={props.quickTestListData.total}
+            showSizeChanger={false}
+            onChange={quickTestpaginationChangeHandle}
+          ></Pagination>
+        </div> */}
+        <div className='btn-bar'>
+          {isManage ? (
+            <React.Fragment>
+              <Button className='btn' type='primary' size={20} onClick={removeQuickTestListHandle}>
+                移除
+              </Button>
+              <Button className='btn' type='primary' size={20} onClick={saveQuickTestListHandle}>
+                确定
+              </Button>
+              <Button className='btn' size={20} onClick={cancelQuickTestListHandle}>
+                取消
+              </Button>
+            </React.Fragment>
+          ) : (
+            <Button className='btn' type='primary' size={20} onClick={runQuickTestHandle}>
+              运行
+            </Button>
+          )}
+        </div>
       </div>
       <Modal
         title='创建任务'
@@ -458,7 +667,12 @@ const caseBox = (props, ref) => {
               })}
             </Select>
           </div>
-          <div className='create-task-item'>案例总数：{selectedRowKeys.length}</div>
+          <div className='create-task-item'>
+            案例总数：
+            {createTaskType === CREATE_TASK_TYPE.CASE
+              ? selectedRowKeys.length
+              : props.quickTestListData.records.length}
+          </div>
         </div>
       </Modal>
       <Modal
@@ -487,14 +701,6 @@ const caseBox = (props, ref) => {
               className='input'
             ></input>
           </div>
-          {/*  <div className='create-task-item'>
-            案例备注：
-            <input
-              value={caseInfo.caseDes || ''}
-              onChange={caseDesChangeHandle}
-              className='input'
-            ></input>
-          </div> */}
         </div>
       </Modal>
     </div>

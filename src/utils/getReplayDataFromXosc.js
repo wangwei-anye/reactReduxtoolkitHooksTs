@@ -15,7 +15,7 @@ const MapList = [
 ];
 export default function (url) {
   return libjsesmini()().then(async (Module) => {
-    const data = await getDataHandle(url);
+    const data = await getDataHandle(ASSERT_SERVE + url);
     Module['FS_createDataFile']('.', 'xoscFile.xosc', data, true, true);
 
     for (let i = 0; i < MapList.length; i++) {

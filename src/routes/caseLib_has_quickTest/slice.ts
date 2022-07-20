@@ -1,16 +1,28 @@
 import { createSlice, PayloadAction, createAsyncThunk } from '@reduxjs/toolkit';
 import { AppThunk, RootState } from '../../models/store';
-import { getMenuDataApi, getListApi } from '@/services/caseLib';
+import {
+  getMenuDataApi,
+  getListApi,
+  getQuickTestMenuDataApi,
+  getQuickTestListApi
+} from '@/services/caseLib';
 
 interface caseLibState {
   treeData: Array<object>;
+  quickTestTreeData: Array<object>;
   listData: object;
+  quickTestListData: object;
   loading: boolean;
 }
 
 const initialState: caseLibState = {
   treeData: [],
+  quickTestTreeData: [],
   listData: {
+    records: [],
+    total: 0
+  },
+  quickTestListData: {
     records: [],
     total: 0
   },
@@ -19,6 +31,15 @@ const initialState: caseLibState = {
 
 export const getMenuData = createAsyncThunk('caseLib/getMenuData', async () => {
   const { data } = await getMenuDataApi();
+  let result: any = [];
+  if (data.code === 200) {
+    result = formatData(data.data);
+  }
+  return result;
+});
+
+export const getQuickTestMenuData = createAsyncThunk('caseLib/getQuickTestMenuData', async () => {
+  const { data } = await getQuickTestMenuDataApi();
   let result: any = [];
   if (data.code === 200) {
     result = formatData(data.data);
@@ -45,6 +66,14 @@ export const getListData = createAsyncThunk('caseLib/getListData', async (query)
   return data;
 });
 
+export const getQuickTestListData = createAsyncThunk(
+  'caseLib/getQuickTestListData',
+  async (query) => {
+    const { data } = await getQuickTestListApi(query);
+    return data;
+  }
+);
+
 const editFileHandle = (data: Array<object>, key: string, isEditable: boolean) => {
   return data.map((item: any) => {
     if (item.key === key) {
@@ -66,6 +95,11 @@ export const caseLibSlice = createSlice({
         action.payload.key,
         action.payload.isEditable
       );
+      state.quickTestTreeData = editFileHandle(
+        state.quickTestTreeData,
+        action.payload.key,
+        action.payload.isEditable
+      );
     }
   },
   extraReducers: {
@@ -76,13 +110,27 @@ export const caseLibSlice = createSlice({
       console.log('getMenuData rejected');
     },
     [getMenuData.pending.type](state) {},
+    [getQuickTestMenuData.fulfilled.type](state, { payload }) {
+      state.quickTestTreeData = payload;
+    },
+    [getQuickTestMenuData.rejected.type](state, err) {
+      console.log('quickTestTreeData rejected');
+    },
+    [getQuickTestMenuData.pending.type](state) {},
     [getListData.fulfilled.type](state, { payload }) {
       state.listData = payload.data;
     },
     [getListData.rejected.type](state, err) {
       console.log('getListData rejected');
     },
-    [getListData.pending.type](state) {}
+    [getListData.pending.type](state) {},
+    [getQuickTestListData.fulfilled.type](state, { payload }) {
+      state.quickTestListData = payload.data;
+    },
+    [getQuickTestListData.rejected.type](state, err) {
+      console.log('getListData rejected');
+    },
+    [getQuickTestListData.pending.type](state) {}
   }
 });
 export const { editFile } = caseLibSlice.actions;

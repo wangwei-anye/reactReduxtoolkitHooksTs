@@ -55,6 +55,7 @@ import { saveApi, updateApi } from '@/services/mapEdit';
 import { getAlgorithm } from '@/services/caseLib';
 import { createTaskApi } from '@/services/task';
 import { getMapListApi } from '@/services/resource';
+import { ASSERT_SERVE } from '@/constants';
 import { createMapLayer, createCarIconLayer, createRouterLayer } from './lib/layers';
 import {
   Resource_lib_tree,
@@ -183,7 +184,7 @@ const MapEdit = () => {
           title: data.data.records[i].name,
           key: data.data.records[i].id,
           url: data.data.records[i].mapFileUrl,
-          icon: data.data.records[i].iconUrl
+          icon: ASSERT_SERVE + data.data.records[i].iconUrl
         });
       }
       setMapListData(result);
@@ -206,11 +207,14 @@ const MapEdit = () => {
   };
 
   const getFile = async (url, mapData) => {
-    fetch(url)
+    fetch(`${ASSERT_SERVE}${url}`, {
+      cache: 'no-cache'
+    })
       .then((file_data) => {
         return file_data.text();
       })
       .then((file_text) => {
+        //设置FeatureCollection 同步  设置 data 异步  因为数据流： FeatureCollection -》data，设置完Feature会更改data
         getDataFromYaml(file_text, mapData);
         setTimeout(() => {
           getDataFromYamlAsnyc(file_text);
@@ -1682,7 +1686,7 @@ const MapEdit = () => {
                     selected: editData.Agents[i].routes[j].selected,
                     changeProp: 'velocity',
                     accelerate: editData.Agents[i].routes[j].accelerate,
-                    velocity: editData.Agents[i].routes[j].velocity
+                    velocity: editData.Agents[i].routes[j].velocity * 3.6 // m/s 换成km/h
                   },
                   geometry: {
                     type: 'Point',
@@ -1730,7 +1734,7 @@ const MapEdit = () => {
                     selected: editData.Agents[i].routes[j].selected,
                     changeProp: 'velocity',
                     accelerate: editData.Agents[i].routes[j].accelerate,
-                    velocity: editData.Agents[i].routes[j].velocity
+                    velocity: editData.Agents[i].routes[j].velocity * 3.6 // m/s 换成km/h
                   },
                   geometry: {
                     type: 'Point',
@@ -1858,12 +1862,17 @@ const MapEdit = () => {
     });
     len += elementArr.length;
     len += triggersArr.length;
+
+    let mapTitle = mapLoadInfo.title;
+    if (mapLoadInfo.title) {
+      mapTitle = mapLoadInfo.title.split('.')[0];
+    }
     const result = [
       {
         title: '地图',
         key: 'map_tab',
         type: 'map_tab',
-        children: [{ title: mapLoadInfo.title, key: RESOURCE_TYPE.MAP, type: RESOURCE_TYPE.MAP }]
+        children: [{ title: mapTitle, key: RESOURCE_TYPE.MAP, type: RESOURCE_TYPE.MAP }]
       }
     ];
     if (mainCarInfo.title) {

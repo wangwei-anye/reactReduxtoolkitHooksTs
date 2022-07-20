@@ -104,11 +104,11 @@ const config = {
     }),
     new CopyWebpackPlugin({
       patterns: [
-        { from: 'public/env.js', to: 'env.js' },
         { from: 'public/libjsesmini.wasm', to: 'libjsesmini.wasm' },
         { from: 'public/libjsesmini.wasm', to: 'js/libjsesmini.wasm' },
         { from: 'public/libtrajectory.wasm', to: 'libtrajectory.wasm' },
         { from: 'public/libtrajectory.wasm', to: 'js/libtrajectory.wasm' },
+
         //解析xosc文件的c++ lib 需要下面2个文件
         {
           from: 'public/VehicleCatalog.xosc',

@@ -1,6 +1,6 @@
 import { PathLayer } from '@deck.gl/layers';
 import { COORDINATE_SYSTEM } from '@deck.gl/core';
-//画地图
+//画地图上的红绿灯
 export const createTrafficLightLayer = (TrafficLightsData) => {
   const TrafficLightLayer = new PathLayer({
     coordinateSystem: COORDINATE_SYSTEM.METER_OFFSETS,

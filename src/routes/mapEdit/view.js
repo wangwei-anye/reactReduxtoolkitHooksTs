@@ -19,7 +19,6 @@ let initScenarioEngine;
 let scenarioEngine;
 const MapEdit = () => {
   // 地图
-  const [loading, setLoading] = useState(false);
   const [mapData, setMapData] = useState({ solidLines: [], brokenLines: [], referenceLines: [] });
 
   //是否播放中
@@ -56,10 +55,8 @@ const MapEdit = () => {
     if (arr.length > 0) {
       url = arr[arr.length - 1];
     }
-    setLoading(true);
     try {
       const result = await getDataFromXodr(url);
-      setLoading(false);
       setMapData(result);
     } catch (error) {}
   };
@@ -141,43 +138,37 @@ const MapEdit = () => {
       <div className='content-box'>
         <div className='center-box'>
           <div className='map-box-wrap'>
-            {loading ? (
-              <span className='spin-wrap'>
-                <Spin />
-              </span>
-            ) : (
-              <div className='map-box'>
-                <React.Fragment>
-                  <div className='play-tip-top-left'></div>
-                  <div className='play-tip-top-right'></div>
-                  <div className='play-tip-bottom-left'></div>
-                  <div className='play-tip-bottom-right'></div>
-                  <div className='play-tip-txt'>播放模式</div>
-                </React.Fragment>
-                <DeckGL
-                  initialViewState={{
-                    longitude: 0,
-                    latitude: 0,
-                    zoom: 20,
-                    minZoom: 18,
-                    maxZoom: 21,
-                    bearing: 0
-                  }}
-                  parameters={{
-                    // clearColor: [0.15, 0.6, 0.15, 1]
-                    clearColor: [0.86, 0.86, 0.86, 1]
-                  }}
-                  // onHover={onDeckHover}
-                  layers={layers}
-                  controller={{
-                    doubleClickZoom: false,
-                    touchRotate: false,
-                    keyboard: false,
-                    dragRotate: false
-                  }}
-                ></DeckGL>
-              </div>
-            )}
+            <div className='map-box'>
+              <React.Fragment>
+                <div className='play-tip-top-left'></div>
+                <div className='play-tip-top-right'></div>
+                <div className='play-tip-bottom-left'></div>
+                <div className='play-tip-bottom-right'></div>
+                <div className='play-tip-txt'>播放模式</div>
+              </React.Fragment>
+              <DeckGL
+                initialViewState={{
+                  longitude: 0,
+                  latitude: 0,
+                  zoom: 20,
+                  minZoom: 18,
+                  maxZoom: 21,
+                  bearing: 0
+                }}
+                parameters={{
+                  // clearColor: [0.15, 0.6, 0.15, 1]
+                  clearColor: [0.86, 0.86, 0.86, 1]
+                }}
+                // onHover={onDeckHover}
+                layers={layers}
+                controller={{
+                  doubleClickZoom: false,
+                  touchRotate: false,
+                  keyboard: false,
+                  dragRotate: false
+                }}
+              ></DeckGL>
+            </div>
           </div>
           <div className='play-box'>
             <Tooltip placement='top' title={'停止'}>
