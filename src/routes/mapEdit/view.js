@@ -8,10 +8,11 @@ import {
 } from '@ant-design/icons';
 import DeckGL from '@deck.gl/react';
 import getDataFromXodr from '@/utils/getDataFromXodr';
-import getReplayDataFromXosc from '@/utils/getReplayDataFromXosc';
-import { getPointByRouterAndTime, isInTrigger } from './lib/utils';
+import getReplayDataFromXosc, { loadMapAndCreateFile } from '@/utils/getReplayDataFromXosc';
 import { createMapLayer, createCarIconLayer } from './lib/layers';
 import { GPS } from './lib/GPS';
+import lodash from 'lodash';
+import qs from 'qs';
 import { Resource_list_main_car, Resource_list_element_car } from './lib/constant';
 import './index.less';
 let playInterval;
@@ -27,14 +28,16 @@ const MapEdit = () => {
 
   //初始化
   useEffect(() => {
-    init(localStorage.xoscUrl);
+    const prarms = qs.parse(lodash.split(window.location.search, '?')[1]);
+    init(prarms.xoscUrl, prarms.mapUrl);
   }, []);
 
-  const init = async (url) => {
+  const init = async (xoscUrl, mapUrl) => {
     try {
-      initScenarioEngine = await getReplayDataFromXosc(url);
+      await loadMapAndCreateFile(mapUrl);
+      initScenarioEngine = await getReplayDataFromXosc(xoscUrl);
       scenarioEngine = initScenarioEngine();
-      setMapHandle();
+      setMapHandle(mapUrl);
       scenarioEngine.step(0);
       scenarioEngine.prepareGroundTruth(0);
       updateState();
@@ -49,14 +52,9 @@ const MapEdit = () => {
   };
 
   // 设置地图
-  const setMapHandle = async () => {
-    let url = scenarioEngine.getOdrFilename();
-    const arr = url.split('/');
-    if (arr.length > 0) {
-      url = arr[arr.length - 1];
-    }
+  const setMapHandle = async (mapUrl) => {
     try {
-      const result = await getDataFromXodr(url);
+      const result = await getDataFromXodr(mapUrl);
       setMapData(result);
     } catch (error) {}
   };
@@ -65,7 +63,7 @@ const MapEdit = () => {
     setIsPlaying(true);
     playInterval = setInterval(() => {
       updateState();
-    }, 50);
+    }, 20);
     return () => {
       clearInterval(playInterval);
     };
@@ -84,8 +82,8 @@ const MapEdit = () => {
   };
 
   const updateState = () => {
-    scenarioEngine.step(0.05);
-    scenarioEngine.prepareGroundTruth(0.05);
+    scenarioEngine.step(0.02);
+    scenarioEngine.prepareGroundTruth(0.02);
     const isEnd = scenarioEngine.GetQuitFlag();
     const result = [];
     for (let i = 0; i < scenarioEngine.entities.object_.size(); i++) {

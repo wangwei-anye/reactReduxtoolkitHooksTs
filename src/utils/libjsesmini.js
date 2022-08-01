@@ -500,10 +500,10 @@ export const libjsesmini = () => {
       function receiveInstance(instance, module) {
         var exports = instance.exports;
         Module['asm'] = exports;
-        wasmMemory = Module['asm']['Q'];
+        wasmMemory = Module['asm']['R'];
         updateGlobalBufferAndViews(wasmMemory.buffer);
-        wasmTable = Module['asm']['S'];
-        addOnInit(Module['asm']['R']);
+        wasmTable = Module['asm']['T'];
+        addOnInit(Module['asm']['S']);
         removeRunDependency('wasm-instantiate');
       }
       addRunDependency('wasm-instantiate');
@@ -5696,6 +5696,12 @@ export const libjsesmini = () => {
       }
       return 0;
     }
+    function _gettimeofday(ptr) {
+      var now = Date.now();
+      HEAP32[ptr >> 2] = (now / 1e3) | 0;
+      HEAP32[(ptr + 4) >> 2] = ((now % 1e3) * 1e3) | 0;
+      return 0;
+    }
     function _setTempRet0(val) {
       setTempRet0(val);
     }
@@ -6089,64 +6095,65 @@ export const libjsesmini = () => {
       c: ___assert_fail,
       a: ___cxa_allocate_exception,
       d: ___cxa_throw,
-      z: ___syscall_bind,
-      p: ___syscall_fcntl64,
-      I: ___syscall_ioctl,
-      J: ___syscall_open,
-      y: ___syscall_recvfrom,
-      x: ___syscall_socket,
-      v: __embind_register_bigint,
-      M: __embind_register_bool,
-      g: __embind_register_class,
-      t: __embind_register_class_class_function,
+      B: ___syscall_bind,
+      s: ___syscall_fcntl64,
+      J: ___syscall_ioctl,
+      K: ___syscall_open,
+      A: ___syscall_recvfrom,
+      z: ___syscall_socket,
+      x: __embind_register_bigint,
+      N: __embind_register_bool,
+      f: __embind_register_class,
+      p: __embind_register_class_class_function,
       j: __embind_register_class_constructor,
       b: __embind_register_class_function,
       i: __embind_register_class_property,
-      L: __embind_register_emval,
+      M: __embind_register_emval,
       l: __embind_register_enum,
       e: __embind_register_enum_value,
-      r: __embind_register_float,
-      F: __embind_register_function,
+      u: __embind_register_float,
+      q: __embind_register_function,
       h: __embind_register_integer,
-      f: __embind_register_memory_view,
-      q: __embind_register_std_string,
-      n: __embind_register_std_wstring,
-      N: __embind_register_void,
-      O: __emval_decref,
-      P: __emval_incref,
-      s: __emval_take_value,
+      g: __embind_register_memory_view,
+      t: __embind_register_std_string,
+      o: __embind_register_std_wstring,
+      O: __embind_register_void,
+      P: __emval_decref,
+      Q: __emval_incref,
+      v: __emval_take_value,
       k: _abort,
-      E: _clock_gettime,
-      K: _emscripten_memcpy_big,
-      G: _emscripten_resize_heap,
-      C: _environ_get,
-      D: _environ_sizes_get,
-      m: _fd_close,
-      H: _fd_read,
-      u: _fd_seek,
-      o: _fd_write,
-      A: _getentropy,
-      w: _setTempRet0,
-      B: _strftime_l
+      G: _clock_gettime,
+      L: _emscripten_memcpy_big,
+      H: _emscripten_resize_heap,
+      E: _environ_get,
+      F: _environ_sizes_get,
+      n: _fd_close,
+      I: _fd_read,
+      w: _fd_seek,
+      r: _fd_write,
+      C: _getentropy,
+      m: _gettimeofday,
+      y: _setTempRet0,
+      D: _strftime_l
     };
     var asm = createWasm();
     var ___wasm_call_ctors = (Module['___wasm_call_ctors'] = function () {
-      return (___wasm_call_ctors = Module['___wasm_call_ctors'] = Module['asm']['R']).apply(
+      return (___wasm_call_ctors = Module['___wasm_call_ctors'] = Module['asm']['S']).apply(
         null,
         arguments
       );
     });
     var _malloc = (Module['_malloc'] = function () {
-      return (_malloc = Module['_malloc'] = Module['asm']['T']).apply(null, arguments);
+      return (_malloc = Module['_malloc'] = Module['asm']['U']).apply(null, arguments);
     });
     var _free = (Module['_free'] = function () {
-      return (_free = Module['_free'] = Module['asm']['U']).apply(null, arguments);
+      return (_free = Module['_free'] = Module['asm']['V']).apply(null, arguments);
     });
     var _htons = (Module['_htons'] = function () {
-      return (_htons = Module['_htons'] = Module['asm']['V']).apply(null, arguments);
+      return (_htons = Module['_htons'] = Module['asm']['W']).apply(null, arguments);
     });
     var ___getTypeName = (Module['___getTypeName'] = function () {
-      return (___getTypeName = Module['___getTypeName'] = Module['asm']['W']).apply(
+      return (___getTypeName = Module['___getTypeName'] = Module['asm']['X']).apply(
         null,
         arguments
       );
@@ -6157,49 +6164,49 @@ export const libjsesmini = () => {
       return (___embind_register_native_and_builtin_types = Module[
         '___embind_register_native_and_builtin_types'
       ] =
-        Module['asm']['X']).apply(null, arguments);
+        Module['asm']['Y']).apply(null, arguments);
     });
     var ___errno_location = (Module['___errno_location'] = function () {
-      return (___errno_location = Module['___errno_location'] = Module['asm']['Y']).apply(
+      return (___errno_location = Module['___errno_location'] = Module['asm']['Z']).apply(
         null,
         arguments
       );
     });
     var _ntohs = (Module['_ntohs'] = function () {
-      return (_ntohs = Module['_ntohs'] = Module['asm']['Z']).apply(null, arguments);
+      return (_ntohs = Module['_ntohs'] = Module['asm']['_']).apply(null, arguments);
     });
     var stackSave = (Module['stackSave'] = function () {
-      return (stackSave = Module['stackSave'] = Module['asm']['_']).apply(null, arguments);
+      return (stackSave = Module['stackSave'] = Module['asm']['$']).apply(null, arguments);
     });
     var stackRestore = (Module['stackRestore'] = function () {
-      return (stackRestore = Module['stackRestore'] = Module['asm']['$']).apply(null, arguments);
+      return (stackRestore = Module['stackRestore'] = Module['asm']['aa']).apply(null, arguments);
     });
     var stackAlloc = (Module['stackAlloc'] = function () {
-      return (stackAlloc = Module['stackAlloc'] = Module['asm']['aa']).apply(null, arguments);
+      return (stackAlloc = Module['stackAlloc'] = Module['asm']['ba']).apply(null, arguments);
     });
     var dynCall_jiji = (Module['dynCall_jiji'] = function () {
-      return (dynCall_jiji = Module['dynCall_jiji'] = Module['asm']['ba']).apply(null, arguments);
+      return (dynCall_jiji = Module['dynCall_jiji'] = Module['asm']['ca']).apply(null, arguments);
     });
     var dynCall_viijii = (Module['dynCall_viijii'] = function () {
-      return (dynCall_viijii = Module['dynCall_viijii'] = Module['asm']['ca']).apply(
+      return (dynCall_viijii = Module['dynCall_viijii'] = Module['asm']['da']).apply(
         null,
         arguments
       );
     });
     var dynCall_iiiiij = (Module['dynCall_iiiiij'] = function () {
-      return (dynCall_iiiiij = Module['dynCall_iiiiij'] = Module['asm']['da']).apply(
+      return (dynCall_iiiiij = Module['dynCall_iiiiij'] = Module['asm']['ea']).apply(
         null,
         arguments
       );
     });
     var dynCall_iiiiijj = (Module['dynCall_iiiiijj'] = function () {
-      return (dynCall_iiiiijj = Module['dynCall_iiiiijj'] = Module['asm']['ea']).apply(
+      return (dynCall_iiiiijj = Module['dynCall_iiiiijj'] = Module['asm']['fa']).apply(
         null,
         arguments
       );
     });
     var dynCall_iiiiiijj = (Module['dynCall_iiiiiijj'] = function () {
-      return (dynCall_iiiiiijj = Module['dynCall_iiiiiijj'] = Module['asm']['fa']).apply(
+      return (dynCall_iiiiiijj = Module['dynCall_iiiiiijj'] = Module['asm']['ga']).apply(
         null,
         arguments
       );

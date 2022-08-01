@@ -109,7 +109,7 @@ const config = {
         { from: 'public/libtrajectory.wasm', to: 'libtrajectory.wasm' },
         { from: 'public/libtrajectory.wasm', to: 'js/libtrajectory.wasm' },
 
-        //解析xosc文件的c++ lib 需要下面2个文件
+        //解析xosc文件的c++ lib 需要下面3个文件
         {
           from: 'public/VehicleCatalog.xosc',
           to: 'xosc/Catalogs/Vehicles/VehicleCatalog.xosc'
@@ -117,6 +117,10 @@ const config = {
         {
           from: 'public/ControllerCatalog.xosc',
           to: 'xosc/Catalogs/Controllers/ControllerCatalog.xosc'
+        },
+        {
+          from: 'public/PedestrianCatalog.xosc',
+          to: 'xosc/Catalogs/Pedestrians/PedestrianCatalog.xosc'
         }
       ]
     })

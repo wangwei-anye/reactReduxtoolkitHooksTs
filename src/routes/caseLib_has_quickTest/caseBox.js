@@ -1,4 +1,11 @@
-import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useImperativeHandle,
+  forwardRef,
+  useMemo
+} from 'react';
 import { useHistory } from 'react-router-dom';
 import {
   Table,
@@ -9,7 +16,8 @@ import {
   Input,
   DatePicker,
   Pagination,
-  Checkbox
+  Checkbox,
+  Progress
 } from 'antd';
 import {
   ReloadOutlined,
@@ -22,7 +30,7 @@ import {
   RedoOutlined,
   SearchOutlined
 } from '@ant-design/icons';
-import {} from './slice';
+import getReplayDataFromXosc from '@/utils/getReplayDataFromXosc';
 import { saveApi } from '@/services/mapEdit';
 import { deleteCaseApi, getAlgorithm } from '@/services/caseLib';
 import { createTaskApi } from '@/services/task';
@@ -32,6 +40,11 @@ import { DEFAULT_PAGE_SIZE } from '@/constants';
 import './index.less';
 const { Option } = Select;
 const { RangePicker } = DatePicker;
+let xosc_uploadFiles = [];
+let xosc_uploadIndex = 0;
+let xosc_uploadTotal = 0;
+let xosc_file_no_map = [];
+let input_target;
 const columns = [
   {
     title: 'ID',
@@ -84,6 +97,11 @@ const caseBox = (props, ref) => {
   const [checkFlagList, setCheckFlagList] = useState([]);
   const [removeFlagList, setRemoveFlagList] = useState([]);
   const [createTaskType, setCreateTaskType] = useState('');
+
+  const [uploadIndex, setUploadIndex] = useState(0);
+  const [uploadTotal, setUploadTotal] = useState(0);
+  const [uploadMoadlVisible, setUploadMoadlVisible] = useState(false);
+
   const CREATE_TASK_TYPE = {
     CASE: 'case',
     QUICK_TEST: 'quick_test'
@@ -118,6 +136,7 @@ const caseBox = (props, ref) => {
     });
     if (data.code === 200) {
       message.success('删除成功!');
+      setSelectedRowKeys([]);
       refreshHandle();
     }
   };
@@ -343,17 +362,78 @@ const caseBox = (props, ref) => {
     refUpload.current.click();
   };
   const uploadHandle = async (e) => {
-    const type = e.target.files[0].name.split('.')[1];
+    input_target = e.target;
+    if (e.target.files.length > 0) {
+      setUploadIndex(0);
+      setUploadTotal(e.target.files.length);
+      xosc_uploadIndex = 0;
+      xosc_file_no_map = [];
+      xosc_uploadTotal = e.target.files.length;
+      xosc_uploadFiles = e.target.files;
+      setUploadMoadlVisible(true);
+      uploadXoscHandle();
+    }
+  };
+  //批量上传XOSC
+  const uploadXoscHandle = async () => {
+    if (xosc_uploadIndex >= xosc_uploadTotal) {
+      refreshHandle();
+      setUploadMoadlVisible(false);
+      input_target.value = '';
+      if (xosc_file_no_map.length > 0) {
+        Modal.warning({
+          title: '提示',
+          okText: '知道了',
+          width: 500,
+          maskClosable: true,
+          content: (
+            <span>
+              {xosc_file_no_map.map((item, index) => {
+                return (
+                  <div key={index}>
+                    地图<span style={{ color: 'red' }}>{item.mapName}</span>不存在
+                  </div>
+                );
+              })}
+            </span>
+          )
+        });
+      }
+      return;
+    }
+    uploadXoscItemHandle(xosc_uploadFiles[xosc_uploadIndex]);
+  };
+
+  const uploadXoscItemHandle = async (file) => {
+    const type = file.name.split('.')[1];
     const formData = new FormData();
     formData.append('menuId', props.menuId);
     formData.append('type', type);
-    formData.append('file', e.target.files[0]);
-    const { data } = await saveApi(formData);
-    if (data.code === 200) {
-      message.success('导入成功!');
-      refreshHandle();
+    formData.append('file', file);
+    let mapName;
+    if (type === 'xosc') {
+      const initScenarioEngine = await getReplayDataFromXosc(file, 2);
+      const scenarioEngine = initScenarioEngine();
+      const result = scenarioEngine.getOdrFilename();
+      const resultArr = result.split('/');
+      mapName = resultArr[resultArr.length - 1];
+      formData.append('mapName', mapName);
     }
+    const { data } = await saveApi(formData);
+    if (data.code === 501) {
+      xosc_file_no_map.push({
+        fileName: file.name,
+        mapName: mapName
+      });
+    }
+    xosc_uploadIndex++;
+    setUploadIndex(xosc_uploadIndex);
+    uploadXoscHandle();
   };
+
+  const progressNum = useMemo(() => {
+    return parseInt((uploadIndex / uploadTotal) * 100);
+  }, [uploadIndex]);
 
   const inputTimeChangeHandle = (val, dateString) => {
     setInputTime(val);
@@ -452,6 +532,7 @@ const caseBox = (props, ref) => {
             ref={refUpload}
             style={{ display: 'none' }}
             onChange={uploadHandle}
+            multiple={true}
             accept='.xosc,.yaml'
             type='file'
           ></input>
@@ -702,6 +783,9 @@ const caseBox = (props, ref) => {
             ></input>
           </div>
         </div>
+      </Modal>
+      <Modal title='上传进度' className='upload-xosc-modal' visible={uploadMoadlVisible} footer=''>
+        <Progress percent={progressNum} />
       </Modal>
     </div>
   );

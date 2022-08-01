@@ -1,5 +1,5 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Tree, Button, message } from 'antd';
+import { Tree, Button, message, Modal, Progress } from 'antd';
 import { DownloadOutlined, DeleteOutlined } from '@ant-design/icons';
 import {
   Resource_lib_tree,
@@ -14,7 +14,7 @@ import {
 } from '../mapEdit/lib/constant';
 import DeckGL from '@deck.gl/react';
 import { createMapLayer } from '../mapEdit/lib/layers';
-import formatDataFromXodr from '@/utils/formatDataFromXodr';
+import getDataFromXodr from '@/utils/getDataFromXodr';
 import { dataURLtoFile } from '@/utils/tools';
 import { uploadMap, getMapListApi, deleteMap } from '@/services/resource';
 import { upload as uploadFile } from '@/services/file';
@@ -24,14 +24,25 @@ import { GPS } from '../mapEdit/lib/GPS';
 import './index.less';
 
 const { DirectoryTree } = Tree;
+
+let xodr_uploadFiles = [];
+let xodr_uploadIndex = 0;
+let xodr_uploadTotal = 0;
+let input_target;
+
 const Resource = () => {
   //切换资源库类型
   const [resourceLibType, setResourceLibType] = useState(RESOURCE_TYPE.MAP);
   const [layers, setLayers] = useState([]);
   const [centerPoint, setCenterPoint] = useState([0, 0]);
+  const [mapLen, setMapLen] = useState(800);
   const [uploadData, setUploadData] = useState();
   const [mapData, setMapData] = useState([]);
   const [selectMap, setSelectMap] = useState({ id: 0, readOnly: 1 });
+
+  const [uploadIndex, setUploadIndex] = useState(0);
+  const [uploadTotal, setUploadTotal] = useState(0);
+  const [uploadMoadlVisible, setUploadMoadlVisible] = useState(false);
 
   const deckRef = useRef();
 
@@ -121,15 +132,56 @@ const Resource = () => {
   const importHandle = () => {
     refUpload.current.click();
   };
-  const uploadHandle = (e) => {
+
+  const isMapExist = (name) => {
+    for (let i = 0; i < mapData.length; i++) {
+      if (mapData[i].title === name) {
+        return true;
+      }
+    }
+    return false;
+  };
+
+  const uploadHandle = async (e) => {
+    input_target = e.target;
+    const filesNoExist = [];
+    for (let i = e.target.files.length - 1; i >= 0; i--) {
+      if (!isMapExist(e.target.files[i].name)) {
+        filesNoExist.push(e.target.files[i]);
+      }
+    }
+    if (filesNoExist.length > 0) {
+      setUploadIndex(0);
+      setUploadTotal(filesNoExist.length);
+      xodr_uploadIndex = 0;
+      xodr_uploadTotal = filesNoExist.length;
+      xodr_uploadFiles = filesNoExist;
+      setUploadMoadlVisible(true);
+      uploadXoscHandle();
+    } else {
+      message.success('文件已存在!');
+    }
+  };
+  //批量上传XODR
+  const uploadXoscHandle = async () => {
+    if (xodr_uploadIndex >= xodr_uploadTotal) {
+      getMapData();
+      setUploadMoadlVisible(false);
+      input_target.value = '';
+      return;
+    }
+    uploadXoscItemHandle(xodr_uploadFiles[xodr_uploadIndex]);
+  };
+
+  const uploadXoscItemHandle = async (file) => {
     const formData = new FormData();
     formData.append('menuId', '1495942761243193349');
-    formData.append('name', e.target.files[0].name);
+    formData.append('name', file.name);
     formData.append('tags', '');
     formData.append('remark', '');
-    formData.append('file', e.target.files[0]);
+    formData.append('file', file);
     setUploadData(formData);
-    initMap(e.target.files[0]);
+    initMap(file);
   };
 
   const screenshot = async () => {
@@ -149,10 +201,15 @@ const Resource = () => {
     if (data.code === 200) {
       uploadData.append('iconUrl', data.data.url);
       const { data: result } = await uploadMap(uploadData);
-      if (result.code === 200) {
-        message.success('导入成功!');
-        getMapData();
-      }
+
+      xodr_uploadIndex++;
+      setUploadIndex(xodr_uploadIndex);
+      uploadXoscHandle();
+
+      // if (result.code === 200) {
+      //   message.success('导入成功!');
+      //   getMapData();
+      // }
     }
   };
 
@@ -161,14 +218,13 @@ const Resource = () => {
     reader.readAsText(file);
     reader.onloadend = async (e) => {
       let data = e.target.result;
-      const result = await formatDataFromXodr(data);
+      const result = await getDataFromXodr(data, 2);
       const layer = createMapLayer(result);
       setLayers([layer]);
-
       calcMapCenterPoint(result.referenceLines);
     };
   };
-  //计算地图中心点
+  //计算地图中心点  和 渲染宽高
   const calcMapCenterPoint = (referenceLines) => {
     let totalX = 0;
     let totalY = 0;
@@ -180,7 +236,33 @@ const Resource = () => {
         totalNum++;
       }
     }
-    setCenterPoint([totalX / totalNum, totalY / totalNum]);
+    const centerX = totalX / totalNum;
+    const centerY = totalY / totalNum;
+    let maxLen = 0;
+    for (let i = 0; i < referenceLines.length; i++) {
+      for (let j = 0; j < referenceLines[i].path.length; j++) {
+        let tempLen =
+          Math.abs(centerX - referenceLines[i].path[j][0]) *
+            Math.abs(centerX - referenceLines[i].path[j][0]) +
+          Math.abs(centerY - referenceLines[i].path[j][1]) *
+            Math.abs(centerY - referenceLines[i].path[j][1]);
+        if (tempLen > 0) {
+          tempLen = Math.sqrt(tempLen);
+        }
+        if (tempLen > maxLen) {
+          maxLen = tempLen;
+        }
+      }
+    }
+    maxLen = maxLen * 2;
+    if (maxLen > 2000) {
+      maxLen = 2000;
+    }
+    if (maxLen < 500) {
+      maxLen = 500;
+    }
+    setMapLen(maxLen);
+    setCenterPoint([centerX, centerY]);
   };
 
   useEffect(() => {
@@ -201,6 +283,10 @@ const Resource = () => {
   };
 
   const pos = GPS.mercator_decrypt(centerPoint[0], centerPoint[1]);
+
+  const progressNum = useMemo(() => {
+    return parseInt((uploadIndex / uploadTotal) * 100);
+  }, [uploadIndex]);
 
   return (
     <div className='resource-wrap'>
@@ -235,36 +321,40 @@ const Resource = () => {
                 onChange={uploadHandle}
                 accept='.xodr'
                 type='file'
+                multiple={true}
               ></input>
             </div>
           </div>
         ) : null}
 
         <div className='resource-list'>{renderResourceList}</div>
-        <div>
-          <div className='map-box-wrap'>
-            <div className='map-box' id='map-box'>
-              <DeckGL
-                ref={deckRef}
-                initialViewState={{
-                  longitude: pos.lon,
-                  latitude: pos.lat,
-                  zoom: 16.5,
-                  minZoom: 16.5,
-                  maxZoom: 16.5,
-                  bearing: 0
-                }}
-                parameters={{
-                  // clearColor: [0.15, 0.6, 0.15, 1]
-                  clearColor: [0.86, 0.86, 0.86, 1]
-                }}
-                layers={layers}
-                controller={false}
-              ></DeckGL>
-            </div>
+      </div>
+      <div>
+        <div className='map-box-wrap' style={{ width: mapLen, height: mapLen }}>
+          <div className='map-box' id='map-box'>
+            <DeckGL
+              ref={deckRef}
+              initialViewState={{
+                longitude: pos.lon,
+                latitude: pos.lat,
+                zoom: 16.5,
+                minZoom: 16.5,
+                maxZoom: 16.5,
+                bearing: 0
+              }}
+              parameters={{
+                // clearColor: [0.15, 0.6, 0.15, 1]
+                clearColor: [0.86, 0.86, 0.86, 1]
+              }}
+              layers={layers}
+              controller={false}
+            ></DeckGL>
           </div>
         </div>
       </div>
+      <Modal title='上传进度' className='upload-xodr-modal' visible={uploadMoadlVisible} footer=''>
+        <Progress percent={progressNum} />
+      </Modal>
     </div>
   );
 };

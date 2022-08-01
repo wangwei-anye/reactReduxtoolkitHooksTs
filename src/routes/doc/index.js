@@ -23,7 +23,7 @@ const Doc = () => {
       <div className='fix-title'>第二版</div>
       <div className='fix-list'>
         <ul>
-          <li>场景编辑模块支持添加多障碍车，支持车辆、行人、自行车、动物种类的障碍物</li>
+          <li>新增场景编辑模块，支持添加多障碍车，支持车辆、行人、自行车、动物种类的障碍物</li>
           <li>新增支持导入opensnario格式场景文件测试</li>
           <li>新增地图管理模块，支持小图预览、大图查看</li>
         </ul>
@@ -53,12 +53,32 @@ const Doc = () => {
       <div className='fix-title'>第五版</div>
       <div className='fix-list'>
         <ul>
-          <li>添加快速测试集系统</li>
+          <li>新增快速测试集系统</li>
           <li>新增地图模块，支持上传opendrive格式地图</li>
           <li>新增yaml文件导入功能</li>
           <li>新增日构建功能</li>
           <li>新增镜像管理功能</li>
+        </ul>
+      </div>
+      <div className='fix-title'>改进修复</div>
+      <div className='fix-list'>
+        <ul>
           <li>地图车道增加方向箭头</li>
+          <li>播放录像性能优化，提高加载速度</li>
+        </ul>
+      </div>
+      <div className='small-version'>v1.4.1 - 2022.07.22</div>
+      <div className='fix-title'>支持批量上传</div>
+      <div className='fix-list'>
+        <ul>
+          <li>地图模块支持opendrive格式地图批量上传</li>
+          <li>案例库模块支持opensnario文件批量导入</li>
+        </ul>
+      </div>
+      <div className='fix-title'>查看日志</div>
+      <div className='fix-list'>
+        <ul>
+          <li>任务管理模块新增日志查看</li>
         </ul>
       </div>
     </div>

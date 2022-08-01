@@ -12,10 +12,11 @@ import {
 import { XVIZ_STYLE, CAR } from './lib/constants';
 import getDataFromXodr from '@/utils/getDataFromXodr';
 import { createMapLayer } from '../mapEdit/lib/layers';
-import { createTrafficLightLayer } from './lib/layers';
+import { createTrafficLightLayer, createCarIconLayer } from './lib/layers';
 import { formatSeconds } from '@/utils/tools';
 import { ASSERT_SERVE } from '@/constants';
 import lodash from 'lodash';
+import Icon_arrow from '@/assets/images/obstacle_car.png';
 import qs from 'qs';
 import './style.less';
 
@@ -25,6 +26,7 @@ let maxClickNum = 5;
 let XVIDready = false;
 let mapReady = false;
 let renderFlag = true;
+let carRenderFlag = true;
 class Play extends PureComponent {
   state = {
     log: exampleLog,
@@ -37,6 +39,7 @@ class Play extends PureComponent {
     },
     fileData: {},
     TrafficLightsData: [],
+    carIconData: [],
     reRenderFlag: false,
     settings: {
       viewMode: 'PERSPECTIVE',
@@ -125,6 +128,7 @@ class Play extends PureComponent {
       });
     }
     this.getTrafficLightLayerData(Number(e));
+    // this.getCarIconLayerData(Number(e));
   };
 
   //设置红绿灯
@@ -180,11 +184,38 @@ class Play extends PureComponent {
     });
   };
 
+  //设置车辆图标
+  getCarIconLayerData = (time) => {
+    if (!carRenderFlag) {
+      return;
+    }
+    carRenderFlag = false;
+    //每秒变化一下红绿灯
+    setTimeout(() => {
+      carRenderFlag = true;
+    }, 1000);
+    const result = [];
+    result.push({
+      coordinates: [10, time * 10, 3],
+      angle: 180,
+      icon: Icon_arrow,
+      anchorY: 90,
+      w: 200,
+      h: 100,
+      angle: 0
+    });
+    this.setState({
+      carIconData: result
+    });
+  };
+
   render() {
     const { log, settings, mapData, loading, TrafficLightsData } = this.state;
     const layers = createMapLayer(mapData, false);
     const TrafficLightLayer = createTrafficLightLayer(TrafficLightsData);
+    // const carIcon = createCarIconLayer(carIconData);
     layers.push(TrafficLightLayer);
+    // layers.push(carIcon);
     return (
       <div className='play-wrap'>
         {loading ? (

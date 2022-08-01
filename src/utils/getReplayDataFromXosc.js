@@ -1,5 +1,6 @@
 import { libjsesmini } from './libjsesmini';
 import { ASSERT_SERVE } from '@/constants';
+import { createGUID } from '@/utils/tools';
 
 const MapList = [
   'crest-curve.xodr',
@@ -13,16 +14,15 @@ const MapList = [
   'soderleden.xodr',
   'straight_500m_signs.xodr'
 ];
-export default function (url) {
-  return libjsesmini()().then(async (Module) => {
-    const data = await getDataHandle(ASSERT_SERVE + url);
-    Module['FS_createDataFile']('.', 'xoscFile.xosc', data, true, true);
 
-    for (let i = 0; i < MapList.length; i++) {
-      const mapData = await getDataHandle(`${ASSERT_SERVE}/download/xodr/${MapList[i]}`);
-      Module['FS_createPath']('./', 'xodr', true, true);
-      Module['FS_createDataFile']('./xodr', MapList[i], mapData, true, true);
-    }
+let Module_libjsesmini = null;
+const getModule = async () => {
+  return libjsesmini()().then(async (Module) => {
+    // for (let i = 0; i < MapList.length; i++) {
+    //   const mapData = await getDataHandle(`${ASSERT_SERVE}/download/xodr/${MapList[i]}`);
+    //   Module['FS_createPath']('./', 'xodr', true, true);
+    //   Module['FS_createDataFile']('./xodr', MapList[i], mapData, true, true);
+    // }
 
     const data3 = await getDataHandle('./xosc/Catalogs/Vehicles/VehicleCatalog.xosc');
     Module['FS_createPath']('./', 'xosc', true, true);
@@ -45,11 +45,65 @@ export default function (url) {
       true,
       true
     );
-    const initScenarioEngine = () => {
-      return new Module.ScenarioEngine('./xoscFile.xosc', true);
-    };
-    return initScenarioEngine;
+
+    const data5 = await getDataHandle('./xosc/Catalogs/Pedestrians/PedestrianCatalog.xosc');
+    Module['FS_createPath']('./xosc/Catalogs', 'Pedestrians', true, true);
+    Module['FS_createDataFile'](
+      './xosc/Catalogs/Pedestrians/',
+      'PedestrianCatalog.xosc',
+      data5,
+      true,
+      true
+    );
+
+    Module.addSearchPath('./xodr');
+    Module.addSearchPath('./xosc/Catalogs/Vehicles');
+    Module.addSearchPath('./xosc/Catalogs/Pedestrians');
+    Module.addSearchPath('./xosc/Catalogs/Controllers');
+
+    return Module;
   });
+};
+
+export const loadMapAndCreateFile = async (url) => {
+  let M;
+  if (Module_libjsesmini) {
+    M = Module_libjsesmini;
+  } else {
+    Module_libjsesmini = await getModule();
+    M = Module_libjsesmini;
+  }
+  const arr = url.split('/');
+  let mapName = '';
+  if (arr.length > 0) {
+    mapName = arr[arr.length - 1];
+  }
+  const mapData = await getDataHandle(`${ASSERT_SERVE}/download/xodr/${url}`);
+  M['FS_createPath']('./', 'xodr', true, true);
+  M['FS_createDataFile']('./xodr', mapName, mapData, true, true);
+};
+
+//type = 1 url ； type = 2 file
+export default async function (url, type = 1) {
+  let M;
+  if (Module_libjsesmini) {
+    M = Module_libjsesmini;
+  } else {
+    Module_libjsesmini = await getModule();
+    M = Module_libjsesmini;
+  }
+  let data;
+  if (type === 1) {
+    data = await getDataHandle(ASSERT_SERVE + url);
+  } else {
+    data = await getDataFromFileHandle(url);
+  }
+  const GUID = createGUID();
+  M['FS_createDataFile']('.', `${GUID}.xosc`, data, true, true);
+  const initScenarioEngine = () => {
+    return new M.ScenarioEngine(`./${GUID}.xosc`, false);
+  };
+  return initScenarioEngine;
 }
 
 const getDataHandle = async (url) => {
@@ -60,4 +114,15 @@ const getDataHandle = async (url) => {
     .then((file_text) => {
       return file_text;
     });
+};
+
+const getDataFromFileHandle = async (file) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.readAsText(file);
+    reader.onloadend = async (e) => {
+      let data = e.target.result;
+      resolve(data);
+    };
+  });
 };

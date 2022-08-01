@@ -1,6 +1,4 @@
-import { CarMesh } from 'streetscape.gl';
-
-export const MAPBOX_TOKEN = '';
+import { default as CarMesh } from './cars';
 export const MAP_STYLE = 'mapbox://styles/mapbox/light-v9';
 
 export const CAR = CarMesh.sedan({

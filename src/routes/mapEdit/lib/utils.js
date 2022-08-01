@@ -342,6 +342,8 @@ export const createRotatePoint = ([x, y], heading, type) => {
 };
 
 //根据路径 和 时间 计算  到什么位置
+// 计算贝塞尔曲线  保存值，避免重复计算
+let calcAjectoryResult = {};
 export const getPointByRouterAndTime = async (router, time) => {
   if (router.length < 2) {
     return {};
@@ -373,18 +375,26 @@ export const getPointByRouterAndTime = async (router, time) => {
   //大节点里的 移动距离
   let moveLen = _v0 * _t + 0.5 * _acc * _t * _t;
 
-  let trajectotyArr = await getTrajectory([
-    {
-      x: startPoint.meterPosition.x,
-      y: startPoint.meterPosition.y,
-      heading: startPoint.heading
-    },
-    {
-      x: endPoint.meterPosition.x,
-      y: endPoint.meterPosition.y,
-      heading: endPoint.heading
-    }
-  ]);
+  let trajectotyArr;
+  //缓存计算结果
+  const keyId = `${startPoint.meterPosition.x}*${startPoint.meterPosition.y}*${startPoint.heading}*${endPoint.meterPosition.x}*${endPoint.meterPosition.y}*${endPoint.heading}`;
+  if (calcAjectoryResult[keyId]) {
+    trajectotyArr = calcAjectoryResult[keyId];
+  } else {
+    trajectotyArr = await getTrajectory([
+      {
+        x: startPoint.meterPosition.x,
+        y: startPoint.meterPosition.y,
+        heading: startPoint.heading
+      },
+      {
+        x: endPoint.meterPosition.x,
+        y: endPoint.meterPosition.y,
+        heading: endPoint.heading
+      }
+    ]);
+    calcAjectoryResult[keyId] = trajectotyArr;
+  }
   if (trajectotyArr.length < 2) {
     trajectotyArr = [
       [startPoint.meterPosition.x, startPoint.meterPosition.y],

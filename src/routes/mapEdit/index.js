@@ -86,6 +86,8 @@ let playInterval;
 let playStartTrigger = {}; //已经触发的触发器  { id :  触发时间 }
 let lastSaveYaml = ''; //上一次保存的yaml  退出编辑器时候判断提示
 let isCreateTask = false; //保存后是否需要运行案例
+// 计算贝塞尔曲线  保存值，避免重复计算
+let calcAjectoryResult = {};
 const MapEdit = () => {
   //可编辑的 Feature   Indexes
   const [selectedFeatureIndexes, setSelectedFeatureIndexes] = useState([0]);
@@ -276,18 +278,29 @@ const MapEdit = () => {
           tempRouterArr[k].meters = meters;
         }
         for (let k = 1; k < tempRouterArr.length; k++) {
-          const trajectotyArr = await getTrajectory([
-            {
-              x: tempRouterArr[k - 1].meters.x,
-              y: tempRouterArr[k - 1].meters.y,
-              heading: tempRouterArr[k - 1].heading
-            },
-            {
-              x: tempRouterArr[k].meters.x,
-              y: tempRouterArr[k].meters.y,
-              heading: tempRouterArr[k].heading
-            }
-          ]);
+          let trajectotyArr;
+          //缓存计算结果
+          const keyId = `${tempRouterArr[k - 1].meters.x}*${tempRouterArr[k - 1].meters.y}*${
+            tempRouterArr[k - 1].heading
+          }*${tempRouterArr[k].meters.x}*${tempRouterArr[k].meters.y}*${tempRouterArr[k].heading}`;
+          if (calcAjectoryResult[keyId]) {
+            trajectotyArr = calcAjectoryResult[keyId];
+          } else {
+            trajectotyArr = await getTrajectory([
+              {
+                x: tempRouterArr[k - 1].meters.x,
+                y: tempRouterArr[k - 1].meters.y,
+                heading: tempRouterArr[k - 1].heading
+              },
+              {
+                x: tempRouterArr[k].meters.x,
+                y: tempRouterArr[k].meters.y,
+                heading: tempRouterArr[k].heading
+              }
+            ]);
+            calcAjectoryResult[keyId] = trajectotyArr;
+          }
+
           const totalLen = getTotalLenByPoint(trajectotyArr);
           tempRouterArr[k].totalLen = totalLen;
           if (tempRouterArr[k].changeProp === 'velocity') {
@@ -816,9 +829,9 @@ const MapEdit = () => {
     setIsPlay(true);
     setIsPlaying(true);
     playInterval = setInterval(() => {
-      playFrame += 0.08;
+      playFrame += 0.05;
       updateState();
-    }, 80);
+    }, 50);
     return () => {
       clearInterval(playInterval);
     };
@@ -1043,7 +1056,6 @@ const MapEdit = () => {
   const dragEnd = (e) => {
     if (isPlay) return;
     setTimeout(() => {
-      setModeHandle(drag_type);
       drag_type = '';
     }, 200);
   };
@@ -1621,8 +1633,10 @@ const MapEdit = () => {
   const getDataFromYaml = (yaml, mapData) => {
     const editData = YAML.parse(yaml);
     lastSaveYaml = YAML.stringify(editData);
+    const mapNameSplitArr = editData.MapFileName.split('/');
+    const editMapName = mapNameSplitArr[mapNameSplitArr.length - 1];
     for (let i = 0; i < mapData.length; i++) {
-      if (mapData[i].url === editData.MapFileName) {
+      if (mapData[i].title === editMapName) {
         setMapLoadInfo(mapData[i]);
       }
     }

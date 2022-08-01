@@ -1,6 +1,13 @@
-import React, { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
+import React, {
+  useEffect,
+  useRef,
+  useState,
+  useImperativeHandle,
+  forwardRef,
+  useMemo
+} from 'react';
 import { useHistory } from 'react-router-dom';
-import { Table, Button, Select, Modal, message } from 'antd';
+import { Table, Button, Select, Modal, message, Progress } from 'antd';
 import {
   ReloadOutlined,
   DeleteOutlined,
@@ -10,10 +17,11 @@ import {
   PlusOutlined,
   FolderViewOutlined
 } from '@ant-design/icons';
-import {} from './slice';
+import getReplayDataFromXosc from '@/utils/getReplayDataFromXosc';
 import { saveApi } from '@/services/mapEdit';
 import { deleteCaseApi, getAlgorithm } from '@/services/caseLib';
 import { createTaskApi } from '@/services/task';
+import { ASSERT_SERVE } from '@/constants';
 import { download } from '@/utils/tools';
 import { DEFAULT_PAGE_SIZE } from '@/constants';
 
@@ -45,7 +53,11 @@ const columns = [
     dataIndex: 'tags'
   }
 ];
-
+let xosc_uploadFiles = [];
+let xosc_uploadIndex = 0;
+let xosc_uploadTotal = 0;
+let xosc_file_no_map = [];
+let input_target;
 const caseBox = (props, ref) => {
   const [isTaskModalVisible, setIsTaskModalVisible] = useState(false);
   const [isCaseModalVisible, setIsCaseModalVisible] = useState(false);
@@ -55,13 +67,15 @@ const caseBox = (props, ref) => {
   const [taskName, setTaskName] = useState();
   const [caseInfo, setCaseInfo] = useState({
     caseName: '',
-    caseTag: '',
-    caseDes: ''
+    caseTag: ''
   });
   const [disabledBtn, setDisabledBtn] = useState(false);
   const history = useHistory();
-
   const [selectedRowKeys, setSelectedRowKeys] = useState([]);
+
+  const [uploadIndex, setUploadIndex] = useState(0);
+  const [uploadTotal, setUploadTotal] = useState(0);
+  const [uploadMoadlVisible, setUploadMoadlVisible] = useState(false);
 
   const getAlgorithmHandle = async () => {
     const { data } = await getAlgorithm();
@@ -96,6 +110,7 @@ const caseBox = (props, ref) => {
     });
     if (data.code === 200) {
       message.success('删除成功!');
+      setSelectedRowKeys([]);
       refreshHandle();
     }
   };
@@ -109,7 +124,7 @@ const caseBox = (props, ref) => {
       if (selectedRowKeys.includes(props.listData.records[i].id)) {
         download(
           `${props.listData.records[i].name}.${props.listData.records[i].type}`,
-          props.listData.records[i].caseFileUrl
+          `${ASSERT_SERVE}${props.listData.records[i].caseFileUrl}`
         );
       }
     }
@@ -130,8 +145,9 @@ const caseBox = (props, ref) => {
           message.info('只能查看xosc文件');
           return;
         }
-        localStorage.xoscUrl = props.listData.records[i].caseFileUrl;
-        window.open('./view');
+        window.open(
+          `./view?xoscUrl=${props.listData.records[i].caseFileUrl}&mapUrl=${props.listData.records[i].mapName}`
+        );
       }
     }
   };
@@ -237,8 +253,7 @@ const caseBox = (props, ref) => {
     setCaseInfo((item) => {
       return {
         caseName: e.target.value,
-        caseTag: item.caseTag,
-        caseDes: item.caseDes
+        caseTag: item.caseTag
       };
     });
   };
@@ -247,18 +262,7 @@ const caseBox = (props, ref) => {
     setCaseInfo((item) => {
       return {
         caseName: item.caseName,
-        caseTag: e.target.value,
-        caseDes: item.caseDes
-      };
-    });
-  };
-
-  const caseDesChangeHandle = (e) => {
-    setCaseInfo((item) => {
-      return {
-        caseName: item.caseName,
-        caseTag: item.caseTag,
-        caseDes: e.target.value
+        caseTag: e.target.value
       };
     });
   };
@@ -284,17 +288,81 @@ const caseBox = (props, ref) => {
   const importHandle = () => {
     refUpload.current.click();
   };
+
   const uploadHandle = async (e) => {
-    const formData = new FormData();
-    formData.append('menuId', props.menuId);
-    formData.append('type', 'xosc');
-    formData.append('file', e.target.files[0]);
-    const { data } = await saveApi(formData);
-    if (data.code === 200) {
-      message.success('导入成功!');
-      refreshHandle();
+    input_target = e.target;
+    if (e.target.files.length > 0) {
+      setUploadIndex(0);
+      setUploadTotal(e.target.files.length);
+      xosc_uploadIndex = 0;
+      xosc_file_no_map = [];
+      xosc_uploadTotal = e.target.files.length;
+      xosc_uploadFiles = e.target.files;
+      setUploadMoadlVisible(true);
+      uploadXoscHandle();
     }
   };
+  //批量上传XOSC
+  const uploadXoscHandle = async () => {
+    if (xosc_uploadIndex >= xosc_uploadTotal) {
+      refreshHandle();
+      setUploadMoadlVisible(false);
+      input_target.value = '';
+      if (xosc_file_no_map.length > 0) {
+        Modal.warning({
+          title: '提示',
+          okText: '知道了',
+          width: 500,
+          maskClosable: true,
+          content: (
+            <span>
+              {xosc_file_no_map.map((item, index) => {
+                return (
+                  <div key={index}>
+                    地图<span style={{ color: 'red' }}>{item}</span>不存在
+                  </div>
+                );
+              })}
+            </span>
+          )
+        });
+      }
+      return;
+    }
+    uploadXoscItemHandle(xosc_uploadFiles[xosc_uploadIndex]);
+  };
+
+  const uploadXoscItemHandle = async (file) => {
+    const type = file.name.split('.')[1];
+    const formData = new FormData();
+    formData.append('menuId', props.menuId);
+    formData.append('type', type);
+    formData.append('file', file);
+    let mapName;
+    if (type === 'xosc') {
+      try {
+        const initScenarioEngine = await getReplayDataFromXosc(file, 2);
+        const scenarioEngine = initScenarioEngine();
+        const result = scenarioEngine.getOdrFilename();
+        const resultArr = result.split('/');
+        mapName = resultArr[resultArr.length - 1];
+        formData.append('mapName', mapName);
+      } catch (error) {}
+    }
+    const { data } = await saveApi(formData);
+    if (data.code === 501) {
+      if (!xosc_file_no_map.includes(mapName)) {
+        xosc_file_no_map.push(mapName);
+      }
+    }
+    xosc_uploadIndex++;
+    setUploadIndex(xosc_uploadIndex);
+    uploadXoscHandle();
+  };
+
+  const progressNum = useMemo(() => {
+    return parseInt((uploadIndex / uploadTotal) * 100);
+  }, [uploadIndex]);
 
   return (
     <div className='case-box-wrap'>
@@ -323,7 +391,8 @@ const caseBox = (props, ref) => {
             ref={refUpload}
             style={{ display: 'none' }}
             onChange={uploadHandle}
-            accept='.xosc'
+            multiple={true}
+            accept='.xosc,.yaml'
             type='file'
           ></input>
           <div className='item'>
@@ -376,36 +445,6 @@ const caseBox = (props, ref) => {
         </div>
       </div>
       <div className='search-box'>
-        {/* <div className='select-box'>
-          <span>文件夹:</span>
-          <Select
-            mode='multiple'
-            allowClear
-            style={{ width: '100%' }}
-            placeholder='Please select'
-            defaultValue={['a10', 'c12']}
-            onChange={handleChange}
-          >
-            {children}
-          </Select>
-        </div>
-        <div className='select-box'>
-          <span>案例类型:</span>
-          <Select
-            mode='multiple'
-            allowClear
-            style={{ width: '100%' }}
-            placeholder='Please select'
-            defaultValue={['a10', 'c12']}
-            onChange={handleChange}
-          >
-            {children}
-          </Select>
-        </div> */}
-        {/* <div className='select-box reset-btn'>
-          <Button type='primary' icon={<RedoOutlined />} size={20}></Button>
-          <div>重置</div>
-        </div> */}
         <div className='select-box run-btn'>
           <span>已选案例数：{selectedRowKeys.length}</span>
           <Button type='primary' size={20} onClick={run}>
@@ -487,15 +526,10 @@ const caseBox = (props, ref) => {
               className='input'
             ></input>
           </div>
-          {/*  <div className='create-task-item'>
-            案例备注：
-            <input
-              value={caseInfo.caseDes || ''}
-              onChange={caseDesChangeHandle}
-              className='input'
-            ></input>
-          </div> */}
         </div>
+      </Modal>
+      <Modal title='上传进度' className='upload-xosc-modal' visible={uploadMoadlVisible} footer=''>
+        <Progress percent={progressNum} />
       </Modal>
     </div>
   );

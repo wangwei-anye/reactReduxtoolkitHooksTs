@@ -92,7 +92,7 @@
     "development": {
       "environment": "development",
       "API_BASE": "http://192.168.113.214:9091",
-      "WEB_SOCKET": "ws://192.168.112.145:6555",
+      "WEB_SOCKET": "ws://192.168.118.70:6555",
       "ASSERT_SERVE": "http://192.168.113.214:8080"
     },
     "ci": {

@@ -1,9 +1,8 @@
 .resource-wrap {
   display: flex;
-  height: 100vh;
+  height:  calc(100vh - 44px);
   .resource-lib {
     flex: 0 0 200px;
-    height: 100vh;
     background-color: #f0f2f5;
     border-right: 1px solid #ccc;
   }
@@ -15,7 +14,6 @@
     .menu-box {
       margin-top: 15px;
       box-sizing: border-box;
-      flex: 0 0 100px;
       border-bottom: 1px solid #ccc;
       display: flex;
       align-items: center;
@@ -68,19 +66,20 @@
         }
       }
     }
-
-    .map-box-wrap {
-      position: relative;
-      visibility: hidden;
-      width: 800px;
-      height: 800px;
-      .map-box {
-        overflow: hidden;
-        height: 100%;
-        display: block;
-        box-sizing: border-box;
-        position: relative; //地图的超出部分才能隐藏
-      }
+  }
+  .map-box-wrap {
+    position: absolute;
+    left: 0;
+    right: 0;
+    visibility: hidden;
+    // width: 800px;
+    // height: 800px;
+    .map-box {
+      overflow: hidden;
+      height: 100%;
+      display: block;
+      box-sizing: border-box;
+      position: relative; //地图的超出部分才能隐藏
     }
   }
 }

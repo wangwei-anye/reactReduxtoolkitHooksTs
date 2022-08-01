@@ -15,7 +15,7 @@ const config = {
     contentBase: path.join(__dirname, 'dist'),
     historyApiFallback: true,
     compress: true,
-    host: '192.168.112.145',
+    host: '192.168.118.70',
     port: 8088,
     hot: true,
     proxy: {
@@ -32,7 +32,7 @@ const config = {
         ws: true
       },
       '/replay': {
-        target: 'ws://192.168.112.145:6555',
+        target: 'ws://192.168.118.70:6555',
         ws: true
       }
     }

@@ -1,6 +1,6 @@
 import { libtrajectory } from './libtrajectory';
 
-let Module = null;
+let Module_libtrajectory = null;
 const getModule = async () => {
   return libtrajectory()().then((Module) => {
     return Module;
@@ -9,11 +9,11 @@ const getModule = async () => {
 
 export default async function (arr) {
   let M;
-  if (Module) {
-    M = Module;
+  if (Module_libtrajectory) {
+    M = Module_libtrajectory;
   } else {
-    Module = await getModule();
-    M = Module;
+    Module_libtrajectory = await getModule();
+    M = Module_libtrajectory;
   }
   var pointRouter = new M.vectorRoutePoint();
   for (let i = 0; i < arr.length; i++) {

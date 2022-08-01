@@ -65,7 +65,8 @@ export default function request(url, options) {
     .then(checkStatus)
     .then(parseJSON)
     .then((data) => {
-      if (data.code !== 200) {
+      //501 导入xosc地图不存在
+      if (data.code !== 200 && data.code !== 501) {
         message.destroy();
         message.error(data.msg || '服务异常', 3);
       }
