@@ -36,6 +36,7 @@ async function buildXvizData(fileUrl) {
   const TRAFFIC_LIGHT = '/vehicle/traffic_light';
   const VEHICLE_WHEEL = '/vehicle/wheel_angle';
   try {
+    console.log(fileUrl);
     const resultData = await axios
       .get(fileUrl)
       .then(function (response) {
@@ -115,7 +116,7 @@ async function buildXvizData(fileUrl) {
           .type('POLYGON')
           .coordinate('IDENTITY')
           .streamStyle({
-            fill_color: '#FF6A6A',
+            fill_color: '#FF6A6A', //'rgba(33,102,146,0.5)',
             height: 2,
             extruded: true
           });
@@ -231,6 +232,8 @@ async function buildXvizData(fileUrl) {
         return [];
       });
     return resultData;
-  } catch (error) {}
+  } catch (error) {
+    console.log(error);
+  }
 }
 module.exports = buildXvizData;

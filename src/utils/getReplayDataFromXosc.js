@@ -116,7 +116,7 @@ const getDataHandle = async (url) => {
     });
 };
 
-const getDataFromFileHandle = async (file) => {
+export const getDataFromFileHandle = async (file) => {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.readAsText(file);

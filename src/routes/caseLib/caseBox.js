@@ -17,7 +17,8 @@ import {
   PlusOutlined,
   FolderViewOutlined
 } from '@ant-design/icons';
-import getReplayDataFromXosc from '@/utils/getReplayDataFromXosc';
+import YAML from 'yaml';
+import getReplayDataFromXosc, { getDataFromFileHandle } from '@/utils/getReplayDataFromXosc';
 import { saveApi } from '@/services/mapEdit';
 import { deleteCaseApi, getAlgorithm } from '@/services/caseLib';
 import { createTaskApi } from '@/services/task';
@@ -345,6 +346,15 @@ const caseBox = (props, ref) => {
         const scenarioEngine = initScenarioEngine();
         const result = scenarioEngine.getOdrFilename();
         const resultArr = result.split('/');
+        mapName = resultArr[resultArr.length - 1];
+        formData.append('mapName', mapName);
+      } catch (error) {}
+    }
+    if (type === 'yaml') {
+      try {
+        const yamlData = await getDataFromFileHandle(file);
+        const yamlJson = YAML.parse(yamlData);
+        const resultArr = yamlJson.MapFileName.split('/');
         mapName = resultArr[resultArr.length - 1];
         formData.append('mapName', mapName);
       } catch (error) {}

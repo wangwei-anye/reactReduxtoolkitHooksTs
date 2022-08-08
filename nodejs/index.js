@@ -20,5 +20,7 @@ wss.on('connection', (ws, req) => {
         ws.send(result[i]);
       }
     });
-  } catch (error) {}
+  } catch (error) {
+    console.log(error);
+  }
 });

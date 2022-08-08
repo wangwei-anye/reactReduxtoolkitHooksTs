@@ -1530,6 +1530,9 @@ const MapEdit = () => {
     formData.append('tags', caseInfo.caseTag);
     formData.append('type', 'yaml');
     formData.append('file', file);
+    const resultArr = mapLoadInfo.url.split('/');
+    const mapName = resultArr[resultArr.length - 1];
+    formData.append('mapName', mapName);
     if (localStorage.caseType === 'edit') {
       formData.append('id', caseInfo.id);
     }

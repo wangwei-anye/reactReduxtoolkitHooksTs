@@ -14,7 +14,8 @@ import {
   CloseCircleFilled,
   LoadingOutlined,
   RightOutlined,
-  DownOutlined
+  DownOutlined,
+  FileTextOutlined
 } from '@ant-design/icons';
 import { DEFAULT_PAGE_SIZE } from '@/constants';
 import { STATE_DOING, STATE_COMPLETE } from './constants';
@@ -197,6 +198,25 @@ const Build = () => {
       }
     },
     {
+      title: '查看日志',
+      key: 'log',
+      render: (item) => {
+        return (
+          <React.Fragment>
+            {item.logUrl ? (
+              <span
+                onClick={() => {
+                  toLog(item);
+                }}
+              >
+                <FileTextOutlined style={{ fontSize: 24, cursor: 'pointer' }} />
+              </span>
+            ) : null}
+          </React.Fragment>
+        );
+      }
+    },
+    {
       title: '算法',
       dataIndex: 'algorithm',
       key: 'algorithm'
@@ -204,6 +224,10 @@ const Build = () => {
   ];
   const toPlay = (playback, trafficLightsPlayback, mapName) => {
     window.open(`/play?fileUrl=${playback}&trafficUrl=${trafficLightsPlayback}&mapName=${mapName}`);
+  };
+
+  const toLog = (item) => {
+    window.open(`/log?name=${item.name}&url=${item.logUrl}`);
   };
 
   useEffect(() => {
